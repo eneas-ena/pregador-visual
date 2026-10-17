@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pregador Visual · Projeção</title>
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="supabase.min.js"></script>
+<style>
+:root{ --fundo:#000; --painel:#0F1B33; --ouro:#C9A227; --txt:#F2EEE3; --txt2:#B9C0D3; --linha:rgba(201,162,39,.3); }
+:root[data-theme="light"]{ --fundo:#fff; --painel:#FBF7EE; --ouro:#9A7B12; --txt:#14213F; --txt2:#55607A; --linha:rgba(15,27,51,.18); }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--fundo);color:var(--txt);font-family:'Source Sans 3',system-ui,sans-serif;overflow:hidden}
+body.sem-cursor, body.sem-cursor *{cursor:none!important}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* slides com transição suave */
+.camada{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .35s ease}
+.camada.on{opacity:1}
+
+/* tela de espera */
+#espera{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px;background:var(--painel);transition:opacity .4s}
+#espera.fora{opacity:0;pointer-events:none}
+#espera img{width:150px;border-radius:30px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+#espera h1{font-family:Cinzel,serif;color:var(--ouro);font-size:34px;letter-spacing:.06em}
+#espera p{color:var(--txt2);font-size:19px;line-height:1.5;max-width:560px}
+.estado{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:17px}
+.estado i{width:10px;height:10px;border-radius:50%;background:#888}
+.estado.ok i{background:#3CB371}.estado.meio i{background:#F5D04C}
+.botao{border:1px solid var(--linha);border-radius:12px;padding:12px 22px;font-weight:600;font-size:17px;background:rgba(201,162,39,.12)}
+.botao.prim{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+
+/* controles discretos (aparecem ao mexer o mouse) */
+#cantos{position:fixed;right:16px;bottom:16px;display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:rgba(15,27,51,.85);color:#F2EEE3;border:1px solid rgba(201,162,39,.3);opacity:0;transition:opacity .3s;font-size:14px}
+#cantos.on{opacity:1}
+#cantos button{width:36px;height:36px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(201,162,39,.3)}
+#cantos svg{width:18px;height:18px}
+.versao{font-size:12px;opacity:.75}
+.oculto{display:none!important}
+#form-codigo,#bloco-conectado{display:flex;flex-direction:column;align-items:center;gap:16px}
+#form-codigo input{font:inherit;font-family:Cinzel,serif;font-size:34px;letter-spacing:.3em;text-align:center;text-transform:uppercase;width:min(340px,80vw);padding:12px 14px 12px 24px;border-radius:14px;border:2px solid var(--linha);background:rgba(201,162,39,.08);color:var(--txt)}
+#form-codigo input:focus{outline:none;border-color:var(--ouro)}
+.erro{color:#E5484D;font-size:16px;min-height:1em}
+.cod-atual{color:var(--txt2);font-size:16px}.cod-atual b{color:var(--ouro);letter-spacing:.2em}
+.link{color:var(--ouro);text-decoration:underline;font-size:15px}
+</style>
+</head>
+<body>
+<img class="camada" id="camA" alt="">
+<img class="camada" id="camB" alt="">
+
+<div id="espera">
+  <img src="icon-512.png" alt="">
+  <h1>Projeção</h1>
+  <form id="form-codigo" class="oculto">
+    <p>Digite o <b>código do projetor</b> que aparece no Pregador Visual<br>(no púlpito, no botão Slides, ou em Minha conta).</p>
+    <input id="codigo" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="······">
+    <span class="erro" id="erro"></span>
+    <button class="botao prim" type="submit">Conectar</button>
+  </form>
+  <div id="bloco-conectado" class="oculto">
+    <span class="estado" id="estado"><i></i><span>Conectando…</span></span>
+    <p>Deixe esta tela aberta no computador do data-show.<br>Abra o sermão no Pregador Visual e toque num slide: ele aparece aqui.</p>
+    <span class="cod-atual">Código: <b id="cod-atual"></b> · <a href="#" class="link" id="trocar">trocar</a></span>
+    <button class="botao prim" id="cheia" type="button">Tela cheia</button>
+  </div>
+  <span class="versao" data-versao></span>
+</div>
+
+<div id="cantos">
+  <span class="estado" id="estado2"><i></i><span>—</span></span>
+  <span class="versao" data-versao></span>
+  <button id="tema" title="Fundo claro/escuro"></button>
+  <button id="cheia2" title="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+</div>
+
+<script>
+const VERSAO = '2.0.0';
+const { SB_URL, SB_KEY } = window.PV_CONFIG;
+const $ = s => document.querySelector(s);
+document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
+
+/* tema (fundo das bordas e tela de espera) */
+const SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+function tema(t){ document.documentElement.setAttribute('data-theme', t); $('#tema').innerHTML = t === 'light' ? LUA : SOL; try { localStorage.setItem('pv.projetor.tema', t); } catch {} }
+let temaSalvo = 'dark'; try { temaSalvo = localStorage.getItem('pv.projetor.tema') || 'dark'; } catch {}
+tema(temaSalvo);
+$('#tema').onclick = () => tema(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+
+/* tela cheia */
+function telaCheia(){ if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen(); }
+$('#cheia').onclick = telaCheia; $('#cheia2').onclick = telaCheia;
+document.addEventListener('dblclick', telaCheia);
+
+/* esconde o cursor e os controles quando o mouse fica parado */
+let tMouse;
+document.addEventListener('mousemove', () => {
+  document.body.classList.remove('sem-cursor'); $('#cantos').classList.add('on');
+  clearTimeout(tMouse); tMouse = setTimeout(() => { document.body.classList.add('sem-cursor'); $('#cantos').classList.remove('on'); }, 2500);
+});
+
+/* mantém a tela do notebook acesa */
+async function acordado(){ try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch {} }
+acordado(); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') acordado(); });
+
+/* troca de slide com transição */
+let visivel = 'camA', urlAtual = null, cache = {};
+function preCarregar(lista){ lista.forEach(u => { if (!cache[u]){ const i = new Image(); i.src = u; cache[u] = i; } }); }
+function mostrar(url){
+  if (url === urlAtual) return;
+  urlAtual = url;
+  const atual = $('#' + visivel), outra = $('#' + (visivel === 'camA' ? 'camB' : 'camA'));
+  if (!url){ atual.classList.remove('on'); outra.classList.remove('on'); return; }   // tela preta
+  if (atual.src === url && atual.complete){ atual.classList.add('on'); outra.classList.remove('on'); return; }   // voltou da tela preta
+  const trocar = () => { outra.classList.add('on'); atual.classList.remove('on'); visivel = outra.id; };
+  outra.onerror = () => { outra.classList.remove('on'); };
+  if (outra.src === url && outra.complete){ outra.onload = null; trocar(); }
+  else { outra.onload = trocar; outra.src = url; }
+}
+
+/* conexão com o iPad */
+function estado(tipo, txt){ ['#estado', '#estado2'].forEach(s => { $(s).className = 'estado ' + tipo; $(s + ' span').textContent = txt; }); }
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+let ultimoEstado = 0, ultimoToque = 0, canal = null, vigia = null;
+
+/* código do projetor: vem do endereço (?codigo=XXXXXX) ou fica guardado neste computador */
+const VALIDO = /^[A-HJ-NP-Z2-9]{6}$/;
+const limparCodigo = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function codigoSalvo(){
+  const daUrl = limparCodigo(new URLSearchParams(location.search).get('codigo'));
+  if (VALIDO.test(daUrl)) return daUrl;
+  try { const c = localStorage.getItem('pv.projetor.codigo'); return c && VALIDO.test(c) ? c : null; } catch { return null; }
+}
+function pedirCodigo(msg){
+  $('#bloco-conectado').classList.add('oculto'); $('#form-codigo').classList.remove('oculto');
+  $('#espera').classList.remove('fora'); $('#erro').textContent = msg || '';
+  setTimeout(() => $('#codigo').focus(), 50);
+}
+$('#codigo').addEventListener('input', e => { e.target.value = limparCodigo(e.target.value).slice(0, 6); $('#erro').textContent = ''; });
+$('#form-codigo').addEventListener('submit', e => {
+  e.preventDefault();
+  const c = limparCodigo($('#codigo').value);
+  if (!VALIDO.test(c)) return $('#erro').textContent = 'O código tem 6 letras/números. Confira no iPad.';
+  try { localStorage.setItem('pv.projetor.codigo', c); } catch {}
+  conectar(c);
+});
+$('#trocar').addEventListener('click', e => {
+  e.preventDefault();
+  try { localStorage.removeItem('pv.projetor.codigo'); } catch {}
+  if (canal){ sb.removeChannel(canal); canal = null; }
+  if (vigia){ clearInterval(vigia); vigia = null; }
+  if (location.search) history.replaceState(null, '', location.pathname);
+  mostrar(null); ultimoEstado = 0; ultimoToque = 0; $('#codigo').value = '';
+  pedirCodigo();
+});
+
+function conectar(codigo){
+  $('#form-codigo').classList.add('oculto'); $('#bloco-conectado').classList.remove('oculto');
+  $('#cod-atual').textContent = codigo;
+  estado('', 'Conectando…');
+  canal = sb.channel('pv-proj-' + codigo, { config: { broadcast: { self: false } } });
+  canal.on('broadcast', { event: 'estado' }, ({ payload: e }) => {
+    ultimoEstado = Date.now();
+    canal.send({ type: 'broadcast', event: 'vivo', payload: {} }).catch(() => {});
+    estado('ok', 'iPad conectado' + (e.titulo ? ' · ' + e.titulo : ''));
+    $('#espera').classList.add('fora');
+    preCarregar(e.slides || []);
+    // vários aparelhos podem estar abertos: só vale o último toque de verdade
+    if ((e.t || 0) < ultimoToque) return;
+    ultimoToque = e.t || 0;
+    const url = (!e.preta && e.atual && e.slides) ? e.slides[e.atual - 1] : null;
+    mostrar(url);
+  }).subscribe(st => {
+    if (st === 'SUBSCRIBED'){ estado('meio', 'Aguardando o iPad…'); canal.send({ type: 'broadcast', event: 'pedido', payload: {} }).catch(() => {}); }
+    else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') estado('', 'Sem conexão com a internet');
+  });
+  // se o iPad sumir por um tempo, volta a pedir o estado (o slide continua na tela)
+  vigia = setInterval(() => {
+    if (canal && Date.now() - ultimoEstado > 15000){
+      estado('meio', ultimoEstado ? 'iPad desconectado · o último slide continua na tela' : 'Aguardando o iPad…');
+      canal.send({ type: 'broadcast', event: 'pedido', payload: {} }).catch(() => {});
+    }
+  }, 5000);
+}
+
+const inicial = codigoSalvo();
+if (inicial){ try { localStorage.setItem('pv.projetor.codigo', inicial); } catch {} conectar(inicial); }
+else pedirCodigo();
+</script>
+</body>
+</html>

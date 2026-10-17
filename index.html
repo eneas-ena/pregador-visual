@@ -1,0 +1,2140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Pregador Visual</title>
+<meta name="theme-color" content="#0F1B33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pregador Visual">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="mammoth.min.js"></script>
+<script src="supabase.min.js"></script>
+<style>
+/* ===================== CORES ===================== */
+:root{
+  --bg:#0F1B33; --bg2:#16264A; --card:#1B2D55; --linha:rgba(201,162,39,.22);
+  --ouro:#C9A227; --ouro2:#E6C45A; --txt:#F2EEE3; --txt2:#B9C0D3; --perigo:#E5484D;
+  --t-azul:#5AA9FF; --t-amarelo:#F5D04C; --t-laranja:#F5994A; --t-vermelho:#FF5C5C;
+  --sombra:0 10px 30px rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --bg:#FBF7EE; --bg2:#F1EADA; --card:#FFFFFF; --linha:rgba(15,27,51,.14);
+  --ouro:#9A7B12; --ouro2:#7D6310; --txt:#14213F; --txt2:#55607A; --perigo:#C62828;
+  --t-azul:#1565C0; --t-amarelo:#A68500; --t-laranja:#D35400; --t-vermelho:#C62828;
+  --sombra:0 8px 24px rgba(15,27,51,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:'Source Sans 3',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--txt);background:var(--bg2);border:1px solid var(--linha);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--ouro);outline-offset:0}
+.tela{position:fixed;inset:0;display:none;flex-direction:column}
+.tela.ativa{display:flex}
+.oculto{display:none!important}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;border:1px solid var(--linha);background:var(--card);font-weight:600;font-size:15px;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn.prim{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+.btn.perigo{color:var(--perigo)}
+.icone{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--linha);background:var(--card)}
+.icone svg{width:20px;height:20px}
+.versao{font-size:12px;color:var(--txt2);letter-spacing:.04em}
+
+/* ===================== INÍCIO ===================== */
+.topo{display:flex;align-items:center;gap:14px;padding:calc(14px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) 14px calc(24px + env(safe-area-inset-left));border-bottom:1px solid var(--linha);background:var(--bg)}
+.marca{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+.marca img{width:44px;height:44px;border-radius:11px}
+.marca h1{font-family:Cinzel,serif;color:var(--ouro);font-size:24px;letter-spacing:.06em}
+.sinc{font-size:13px;color:var(--txt2);display:flex;align-items:center;gap:6px}
+.sinc i{width:8px;height:8px;border-radius:50%;background:#3CB371;display:inline-block}
+.sinc.off i{background:#999}.sinc.pend i{background:var(--t-amarelo)}
+.corpo{flex:1;overflow:auto;padding:22px calc(24px + env(safe-area-inset-right)) 40px calc(24px + env(safe-area-inset-left));-webkit-overflow-scrolling:touch}
+.barra-busca{display:flex;gap:12px;margin-bottom:18px;max-width:1100px;margin-inline:auto}
+.barra-busca input{flex:1}
+.lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;max-width:1100px;margin:0 auto}
+.cartao{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sombra)}
+.cartao h3{font-family:Cinzel,serif;font-size:17px;color:var(--ouro);line-height:1.3}
+.cartao .meta{font-size:14px;color:var(--txt2)}
+.cartao .acoes{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.vazio{text-align:center;color:var(--txt2);padding:60px 20px;max-width:520px;margin:0 auto;line-height:1.6}
+.vazio img{width:120px;border-radius:24px;margin-bottom:16px}
+
+/* ===================== EDITOR ===================== */
+.form{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.grupo{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+label.rot{display:block;font-size:13px;color:var(--txt2);margin-bottom:6px;font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+.secao{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:18px}
+.secao h2{font-family:Cinzel,serif;color:var(--ouro);font-size:17px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.soltar{border:2px dashed var(--linha);border-radius:14px;padding:22px;text-align:center;color:var(--txt2);cursor:pointer}
+.soltar.cheio{border-style:solid;border-color:var(--ouro);color:var(--txt)}
+.previa{max-height:260px;overflow:auto;margin-top:12px;padding:14px;border-radius:10px;background:var(--bg2);font-size:15px;line-height:1.5}
+.previa h1,.previa h2,.previa h3{font-family:Cinzel,serif;color:var(--ouro);margin:8px 0}
+.previa p{margin:6px 0}
+.texto-linha{display:grid;grid-template-columns:220px 1fr auto;gap:10px;align-items:start;padding:12px 0;border-top:1px solid var(--linha)}
+.texto-linha:first-of-type{border-top:0}
+.texto-linha textarea{min-height:84px;resize:vertical;line-height:1.45}
+.base-opc{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2);margin-top:8px;cursor:pointer}
+.base-opc input{width:auto}
+.dica{font-size:13px;color:var(--txt2);margin-top:6px;line-height:1.4}
+.achou{color:#3CB371}
+
+/* ===================== PÚLPITO ===================== */
+#pulpito{background:var(--bg)}
+.p-topo{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:calc(10px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 10px calc(18px + env(safe-area-inset-left));border-bottom:1px solid var(--linha)}
+.p-esq{display:flex;align-items:center;gap:12px;min-width:0}
+.p-titulo{font-family:Cinzel,serif;color:var(--txt);font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-relogios{display:flex;gap:12px}
+.relogio{min-width:150px;padding:8px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--linha);text-align:center;user-select:none;-webkit-user-select:none}
+.relogio small{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;letter-spacing:.12em;color:var(--txt2);font-weight:700}
+.relogio small svg{width:12px;height:12px}
+.relogio b{display:block;font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.03em;line-height:1.15}
+#cron{cursor:pointer;transition:border-color .4s,color .4s}
+#cron b{display:flex;align-items:center;justify-content:center;gap:8px}
+#cron b svg{width:18px;height:18px;opacity:.8}
+#cron.azul{border-color:var(--t-azul)} #cron.azul b{color:var(--t-azul)}
+#cron.amarelo{border-color:var(--t-amarelo)} #cron.amarelo b{color:var(--t-amarelo)}
+#cron.laranja{border-color:var(--t-laranja)} #cron.laranja b{color:var(--t-laranja)}
+#cron.vermelho{border-color:var(--t-vermelho)} #cron.vermelho b{color:var(--t-vermelho)}
+#cron.parado b{opacity:.75}
+.p-dir{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.p-sub{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px calc(22px + env(safe-area-inset-right)) 8px calc(22px + env(safe-area-inset-left));font-size:12.5px;color:var(--txt2);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.prox{display:flex;align-items:center;gap:0;border:1px solid var(--linha);border-radius:10px;background:var(--card);overflow:hidden;text-transform:none;letter-spacing:0;font-size:14px;max-width:46%}
+.prox button{padding:7px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prox button:first-child{min-width:0}
+.prox button:last-child{border-left:1px solid var(--linha);padding:7px 10px;flex-shrink:0}
+.prox svg{width:14px;height:14px;vertical-align:-2px}
+.menu-topicos{position:absolute;left:calc(22px + env(safe-area-inset-left));top:118px;z-index:30;background:var(--card);border:1px solid var(--linha);border-radius:14px;box-shadow:var(--sombra);max-height:60vh;overflow:auto;min-width:320px;max-width:520px;padding:6px}
+.menu-topicos button{display:block;width:100%;text-align:left;padding:11px 14px;border-radius:9px;font-size:15px}
+.menu-topicos button.atual{background:var(--bg2);color:var(--ouro);font-weight:700}
+
+#leitura{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px calc(40px + env(safe-area-inset-right)) 0 calc(40px + env(safe-area-inset-left));-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#conteudo{max-width:1000px;margin:0 auto;font-size:var(--fs,28px);line-height:var(--lh,1.5);text-align:var(--al,left)}
+#conteudo.serif{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:calc(var(--fs,28px) * 1.12)}
+#conteudo h1{font-family:Cinzel,serif;color:var(--ouro2);font-size:1.6em;line-height:1.2;margin:.5em 0 .35em;letter-spacing:.02em;text-align:left}
+#conteudo h2{font-family:Cinzel,serif;color:var(--ouro);font-size:1.22em;line-height:1.25;margin:1.3em 0 .45em;text-align:left;scroll-margin-top:12px}
+#conteudo h3{color:var(--ouro);font-size:1.05em;margin:1em 0 .35em;text-align:left}
+#conteudo h4,#conteudo h5,#conteudo h6{font-size:1em;margin:.8em 0 .3em}
+#conteudo p{margin:0 0 .7em}
+#conteudo strong{color:var(--txt);font-weight:700}
+:root:not([data-theme="light"]) #conteudo strong{color:#FFFFFF}
+#conteudo u{text-decoration-color:var(--ouro);text-underline-offset:.15em}
+#conteudo blockquote{background:var(--card);border-left:4px solid var(--ouro);border-radius:10px;padding:.6em .9em;margin:.4em 0 1em;font-style:italic}
+#conteudo blockquote p:last-child{margin:0}
+#conteudo ul,#conteudo ol{margin:0 0 .8em 1.3em}
+#conteudo li{margin:.2em 0}
+#conteudo img{max-width:100%;border-radius:10px}
+/* realces (marca-texto) */
+mark{color:inherit;border-radius:.18em;padding:0 .08em;-webkit-box-decoration-break:clone;box-decoration-break:clone;background:rgba(245,208,76,.42)}
+mark.mk-verde{background:rgba(76,200,120,.38)} mark.mk-rosa{background:rgba(255,105,160,.38)} mark.mk-azul{background:rgba(90,169,255,.40)}
+:root[data-theme="light"] mark{background:#FFE866} :root[data-theme="light"] mark.mk-verde{background:#B9F0C4}
+:root[data-theme="light"] mark.mk-rosa{background:#FFC6DD} :root[data-theme="light"] mark.mk-azul{background:#C4E0FF}
+#pulpito.marcando #leitura{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;cursor:text}
+#pulpito.marcando #conteudo .ref-link{pointer-events:none}
+#p-marcar.on{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+.barra-marca{display:none;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;padding:8px 14px;border-bottom:1px solid var(--linha);background:var(--bg2)}
+#pulpito.marcando .barra-marca{display:flex}
+.barra-marca .dica{margin:0}
+.cores{display:flex;gap:8px}
+.cor{width:32px;height:32px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 2px var(--bg2)}
+.cor.on{border-color:var(--txt)}
+.cor[data-cor="amarelo"]{background:#F5D04C}.cor[data-cor="verde"]{background:#4CC878}.cor[data-cor="vermelho"]{background:#E5484D}.cor[data-cor="rosa"]{background:#FF69A0}.cor[data-cor="azul"]{background:#5AA9FF}
+#seg-ferr button{padding:8px 12px;white-space:nowrap}
+#seg-ferr .amostra{padding:0 3px;color:inherit}
+#seg-ferr .amostra-a{color:var(--t-vermelho);font-weight:800}
+#seg-ferr button.on .amostra-a{color:#8B0000}
+#seg-ferr .amostra-u{text-decoration-thickness:2px;text-underline-offset:3px;font-weight:700}
+/* vermelho no realce */
+mark.mk-vermelho{background:rgba(229,72,77,.40)} :root[data-theme="light"] mark.mk-vermelho{background:#FFC2C2}
+/* cor da letra */
+.fc-amarelo{color:#F5D04C}.fc-verde{color:#5BD68A}.fc-vermelho{color:#FF6B6B}.fc-rosa{color:#FF85B5}.fc-azul{color:#7DBBFF}
+:root[data-theme="light"] .fc-amarelo{color:#9A7300} :root[data-theme="light"] .fc-verde{color:#1E8E3E}
+:root[data-theme="light"] .fc-vermelho{color:#C62828} :root[data-theme="light"] .fc-rosa{color:#C2185B} :root[data-theme="light"] .fc-azul{color:#1565C0}
+.fc{font-weight:600}
+/* sublinhado */
+.sb{text-decoration:underline;text-decoration-thickness:.11em;text-underline-offset:.2em;text-decoration-skip-ink:none}
+.sb-amarelo{text-decoration-color:#F5D04C}.sb-verde{text-decoration-color:#4CC878}.sb-vermelho{text-decoration-color:#E5484D}.sb-rosa{text-decoration-color:#FF69A0}.sb-azul{text-decoration-color:#5AA9FF}
+:root[data-theme="light"] .sb-amarelo{text-decoration-color:#C9A227}
+#conteudo table{border-collapse:collapse;margin:.5em 0 1em}
+#conteudo td,#conteudo th{border:1px solid var(--linha);padding:.3em .5em}
+.ref-link{color:var(--ouro);border-bottom:2px dotted var(--ouro);cursor:pointer;font-weight:600}
+.fim-sermao{height:var(--folga,60vh)}
+
+/* gaveta do texto bíblico */
+#gaveta{position:relative;border-top:1px solid var(--linha);background:var(--bg2);padding:8px calc(22px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));box-shadow:0 -10px 30px rgba(0,0,0,.25)}
+#gaveta .pegador{width:56px;height:5px;border-radius:3px;background:var(--txt2);opacity:.45;margin:0 auto 8px}
+.g-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.g-chips::-webkit-scrollbar{display:none}
+.chip{padding:5px 12px;border-radius:20px;border:1px solid var(--linha);font-size:14px;white-space:nowrap;background:var(--card);font-weight:600}
+.chip.ativo{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+.g-cab{display:flex;align-items:baseline;gap:12px;cursor:pointer}
+.g-rot{font-size:11px;letter-spacing:.14em;color:var(--ouro);font-weight:700;white-space:nowrap}
+.g-ref{font-weight:700;font-size:19px;white-space:nowrap}
+.g-texto{font-size:19px;line-height:1.5;color:var(--txt);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px}
+#gaveta.aberta .g-texto{white-space:pre-wrap;overflow-y:auto;max-height:48vh;font-size:var(--gfs,24px);padding:4px 0 6px;-webkit-overflow-scrolling:touch}
+#gaveta.vazia{display:none}
+/* fechada: só as referências */
+#gaveta:not(.aberta) .g-cab,#gaveta:not(.aberta) .g-texto{display:none}
+#gaveta:not(.aberta) .g-chips{padding-bottom:0}
+#gaveta:not(.aberta) .pegador{margin-bottom:6px}
+#gaveta:not(.aberta) .chip{font-size:16px;padding:7px 16px}
+
+/* configurações */
+.painel{position:fixed;top:0;right:0;bottom:0;width:min(400px,92vw);background:var(--card);border-left:1px solid var(--linha);box-shadow:var(--sombra);z-index:50;padding:calc(20px + env(safe-area-inset-top)) 22px 22px;overflow:auto;transform:translateX(105%);transition:transform .25s}
+.painel.aberto{transform:none}
+.painel h2{font-family:Cinzel,serif;color:var(--ouro);font-size:19px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+.opc{margin-bottom:20px}
+.seg{display:flex;border:1px solid var(--linha);border-radius:11px;overflow:hidden}
+.seg button{flex:1;padding:10px;font-weight:600;font-size:14px}
+.seg button.on{background:var(--ouro);color:#0F1B33}
+.passo{display:flex;align-items:center;gap:12px}
+.passo b{min-width:54px;text-align:center;font-variant-numeric:tabular-nums}
+.fundo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:none}
+.fundo.on{display:block}
+
+/* aviso */
+#aviso{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-12px);background:var(--card);border:1px solid var(--ouro);color:var(--txt);padding:12px 20px;border-radius:12px;box-shadow:var(--sombra);opacity:0;transition:.25s;z-index:99;pointer-events:none;font-weight:600;max-width:90vw;text-align:center}
+#aviso.on{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:900px){
+  .grupo{grid-template-columns:1fr}
+  .texto-linha{grid-template-columns:1fr}
+  .relogio{min-width:110px;padding:6px 10px}
+  .relogio b{font-size:22px}
+  .p-titulo{display:none}
+}
+.rc,.v-mob{display:none}
+.v-mob{margin-left:10px;text-transform:none;letter-spacing:.02em;font-weight:500}
+@media (max-width:600px){
+  .rl{display:none}.rc{display:inline}.v-mob{display:inline}
+  /* início */
+  .topo{gap:8px;padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  .marca{gap:9px}.marca img{width:38px;height:38px;border-radius:9px}
+  .marca h1{font-size:19px;letter-spacing:.04em}
+  #inicio .topo{flex-wrap:wrap}
+  #sinc{order:5;width:100%;font-size:12.5px}
+  .btn{padding:9px 12px}
+  .icone{width:38px;height:38px}
+  .corpo{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  .lista{grid-template-columns:1fr}
+  /* púlpito */
+  .p-topo{grid-template-columns:auto 1fr auto;gap:8px;padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(10px + env(safe-area-inset-right))}
+  .p-dir .versao,.p-dir [data-tema]{display:none}
+  .p-relogios{gap:8px;justify-content:center}
+  .relogio{min-width:0;flex:1;max-width:150px;padding:5px 8px;border-radius:12px}
+  .relogio small{font-size:10px;letter-spacing:.1em}
+  .relogio b{font-size:22px}
+  #cron b{gap:5px}#cron b svg{width:14px;height:14px}
+  .p-sub{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right));font-size:11.5px}
+  .p-sub>span{white-space:nowrap}
+  .prox{max-width:66%;font-size:13px}
+  .prox button{padding:6px 9px}
+  .menu-topicos{left:12px;right:12px;min-width:0;top:96px}
+  #leitura{padding-left:calc(16px + env(safe-area-inset-left));padding-right:calc(16px + env(safe-area-inset-right))}
+  #gaveta{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  #gaveta:not(.aberta) .chip{font-size:14px;padding:6px 12px}
+  #aviso{top:calc(80px + env(safe-area-inset-top))}
+  .barra-marca .dica{display:none}
+  #seg-ferr button{padding:7px 9px;font-size:13px}
+  .cor{width:28px;height:28px}
+}
+/* modal */
+.modal-fundo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);border:1px solid var(--linha);border-radius:18px;box-shadow:var(--sombra);width:min(640px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:22px}
+.modal h2{font-family:Cinzel,serif;color:var(--ouro);font-size:20px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal .sub{color:var(--txt2);font-size:14px;margin-bottom:14px}
+.total{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;margin:6px 0 14px}
+.barras{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.barra-t{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:15px}
+.barra-t .nome{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barra-t .t{font-variant-numeric:tabular-nums;font-weight:700}
+.barra-t .trilho{grid-column:1/-1;height:8px;border-radius:4px;background:var(--bg2);overflow:hidden}
+.barra-t .trilho i{display:block;height:100%;border-radius:4px;background:var(--ouro)}
+.campos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.campos .largo{grid-column:1/-1}
+.modal .acoes{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.hist-item{border-top:1px solid var(--linha);padding:12px 0}
+.hist-item:first-child{border-top:0}
+.hist-cab{display:flex;justify-content:space-between;gap:10px;align-items:baseline;cursor:pointer}
+.hist-cab b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hist-tit{font-family:Cinzel,serif;color:var(--ouro);font-size:15px}
+.hist-meta{font-size:13.5px;color:var(--txt2);margin-top:2px}
+.hist-det{display:none;margin-top:10px}
+.hist-item.aberto .hist-det{display:block}
+.meta.pregado{color:var(--ouro)}
+@media (max-width:600px){ .campos{grid-template-columns:1fr} .total{font-size:36px} .modal{padding:18px} }
+/* notas de púlpito */
+#conteudo .nota{display:inline-block;cursor:pointer;font-size:.8em;line-height:1;margin:0 .15em;vertical-align:.1em;-webkit-user-select:none;user-select:none}
+#conteudo .nota::before{content:"📌"}
+.nota-linha{font-family:'Source Sans 3',system-ui,sans-serif;font-style:italic;font-weight:600;font-size:.7em;line-height:1.35;color:var(--t-laranja);margin:-.35em 0 .8em;padding:.3em .7em;border-left:3px solid var(--t-laranja);background:rgba(245,153,74,.08);border-radius:0 8px 8px 0;text-align:left}
+li > .nota-linha{margin:.3em 0}
+#balao{position:fixed;z-index:60;max-width:min(460px,86vw);background:var(--card);color:var(--txt);border:1.5px solid var(--t-laranja);border-radius:12px;box-shadow:var(--sombra);padding:12px 16px;font-size:20px;line-height:1.4;font-style:italic}
+.barra-marca[data-f="nota"] .cores, .barra-marca[data-f="nota"] #mk-selecao{display:none}
+.modal textarea{min-height:110px;resize:vertical;line-height:1.45;margin-bottom:14px}
+#ensinar-botao.ouvindo{background:var(--ouro);color:#0F1B33}
+/* slides */
+.ed-sl-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
+.ed-sl-grade figure{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--linha);background:#000}
+.ed-sl-grade img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain}
+.ed-sl-grade figcaption,.sl-mini span{font-size:13px!important;padding:2px 8px!important;position:absolute;left:5px;bottom:4px;font-size:11px;font-weight:700;background:rgba(0,0,0,.65);color:#fff;border-radius:5px;padding:1px 6px}
+.p-direita{display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:46%;min-width:0}
+.p-direita .prox{max-width:100%}
+.sl-pill{display:flex;align-items:center;gap:7px;border:1px solid var(--linha);border-radius:10px;background:var(--card);padding:6px 10px;font-size:14px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--txt)}
+.sl-pill svg{width:16px;height:16px}
+.sl-pill .seta{width:14px;height:14px;transition:transform .2s}
+.sl-pill.aberto .seta{transform:rotate(180deg)}
+.sl-pill.aberto{border-color:var(--ouro)}
+.pt{width:9px;height:9px;border-radius:50%;background:#888;display:inline-block}
+.pt.ok{background:#3CB371}.pt.meio{background:var(--t-amarelo)}
+.sl-painel{position:fixed;z-index:31;width:min(360px,calc(100vw - 24px));max-height:calc(100vh - 170px);display:flex;flex-direction:column;background:var(--card);border:1px solid var(--linha);border-radius:14px;box-shadow:var(--sombra)}
+.sl-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--linha);flex-wrap:wrap}
+.sl-status{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt2);font-weight:600}
+.sl-status i{width:9px;height:9px;border-radius:50%;background:#888}
+.sl-status.ok i{background:#3CB371}.sl-status.meio i{background:var(--t-amarelo)}
+.sl-botoes{display:flex;gap:6px}
+.sl-botoes .icone{width:38px;height:38px}
+#sl-preta.on{background:#000;color:#fff;border-color:#fff}
+.sl-grade{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;display:flex;flex-direction:column;gap:10px}
+.sl-mini{position:relative;border-radius:8px;overflow:hidden;border:3px solid var(--linha);background:#000;padding:0;flex-shrink:0}
+.sl-mini img{display:block;width:100%;height:auto}
+.sl-mini.atual{border-color:var(--ouro);box-shadow:0 0 0 2px var(--ouro)}
+.sl-mini.atual span{background:var(--ouro);color:#0F1B33}
+.sl-painel.preta .sl-mini.atual{border-color:#888}
+@media (max-width:600px){ .p-direita{max-width:66%} .sl-painel{left:12px;right:12px;width:auto} }
+/* correção de texto */
+.previa.editando{max-height:62vh;outline:2px solid var(--ouro);background:var(--card);cursor:text}
+.previa mark,.previa .fc,.previa .sb{border-radius:3px}
+.previa .nota::before{content:"📌"}
+#pulpito.editando-texto #conteudo{outline:2px dashed var(--ouro);outline-offset:14px;border-radius:6px;cursor:text;caret-color:var(--ouro)}
+#pulpito.editando-texto #conteudo .ref-link{border-bottom-style:none}
+.barra-marca[data-f="texto"] .cores, .barra-marca[data-f="texto"] #mk-selecao{display:none}
+.sec-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#ed-corrigir.on{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+/* v1.9: sem gaveta e sem "Próximo"; caixa do texto bíblico */
+#p-prox{display:none!important}
+.ct-fundo{position:fixed;inset:0;z-index:44;background:rgba(0,0,0,.35)}
+.caixa-texto{position:fixed;z-index:45;left:50%;top:calc(96px + env(safe-area-inset-top));transform:translateX(-50%);width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 130px);display:flex;flex-direction:column;background:var(--card);border:1.5px solid var(--ouro);border-radius:16px;box-shadow:var(--sombra)}
+.ct-cab{display:flex;align-items:center;gap:12px;padding:12px 14px 10px 20px;border-bottom:1px solid var(--linha)}
+.ct-rot{font-size:11px;letter-spacing:.14em;color:var(--ouro);font-weight:700;white-space:nowrap}
+.ct-cab b{flex:1;font-size:21px}
+.ct-corpo{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 22px 20px;font-size:var(--gfs,24px);line-height:1.55;white-space:pre-wrap;cursor:pointer}
+.faltam{border:1.5px solid var(--t-laranja);background:rgba(245,153,74,.10);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14.5px;line-height:1.5}
+.faltam b{color:var(--t-laranja)}
+.faltam .refs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.faltam .refs span{border:1px solid var(--t-laranja);border-radius:20px;padding:2px 10px;font-weight:600;font-size:13.5px}
+.faltam.ok{border-color:#3CB371;background:rgba(60,179,113,.08)}
+.meta.alerta{color:var(--t-laranja);font-weight:600}
+/* referência principal fixa no topo */
+.p-cab-tit{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.p-base{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:8px;border:1px solid var(--ouro);background:rgba(201,162,39,.12);color:var(--ouro);font-weight:700;font-size:14px;max-width:100%;white-space:nowrap}
+.p-base span{overflow:hidden;text-overflow:ellipsis}
+.p-base svg{width:15px;height:15px;flex-shrink:0}
+.p-base.on{background:var(--ouro);color:#0F1B33}
+@media (max-width:900px){ .p-cab-tit .p-titulo{display:none} }
+.p-base-mob{display:none!important}
+@media (max-width:600px){ #p-base{display:none!important} .p-base-mob:not(.oculto){display:inline-flex!important;margin-left:10px;font-size:12.5px;padding:2px 8px;text-transform:none;letter-spacing:0} }
+/* iPadOS: o sistema esmaece a faixa logo abaixo da barra de status no app instalado.
+   Deixamos essa faixa vazia para que título e relógios fiquem abaixo dela. */
+@media (display-mode: standalone){
+  .topo{padding-top:calc(env(safe-area-inset-top, 0px) + 34px)!important}
+  .p-topo{padding-top:calc(env(safe-area-inset-top, 0px) + 30px)!important}
+  .painel{padding-top:calc(env(safe-area-inset-top, 0px) + 40px)!important}
+  .caixa-texto{top:calc(env(safe-area-inset-top, 0px) + 120px)}
+}
+
+/* ===================== ENTRAR / AGUARDANDO APROVAÇÃO ===================== */
+.acesso{align-items:center;justify-content:center;overflow:auto;padding:calc(24px + env(safe-area-inset-top)) 16px 24px;background:var(--bg)}
+.acesso-topo{position:fixed;top:calc(12px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));display:flex;align-items:center;gap:10px}
+.acesso-caixa{width:min(440px,100%);background:var(--card);border:1px solid var(--linha);border-radius:20px;box-shadow:var(--sombra);padding:28px 26px;display:flex;flex-direction:column;gap:14px;margin:auto}
+.acesso-caixa .logo{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:4px;text-align:center}
+.acesso-caixa .logo img{width:84px;height:84px;border-radius:20px}
+.acesso-caixa .logo h1{font-family:Cinzel,serif;color:var(--ouro);font-size:26px;letter-spacing:.06em}
+.acesso-caixa .logo p{color:var(--txt2);font-size:15px;line-height:1.45}
+.acesso-caixa .btn{justify-content:center;width:100%;padding:13px 16px}
+.acesso-abas{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--linha);border-radius:12px;overflow:hidden}
+.acesso-abas button{padding:10px;font-weight:600;color:var(--txt2)}
+.acesso-abas button.on{background:var(--ouro);color:#0F1B33}
+.acesso-erro{color:var(--perigo);font-size:14px;min-height:1em}
+.acesso-link{color:var(--ouro);font-size:14px;text-decoration:underline;align-self:center}
+.acesso-msg{color:var(--txt2);font-size:16px;line-height:1.55;text-align:center}
+/* menu da conta */
+.conta-linha{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--linha);font-size:15px}
+.conta-linha span{color:var(--txt2)}
+.conta-linha b{text-align:right;word-break:break-all}
+.uso-barra{height:8px;border-radius:6px;background:var(--bg2);overflow:hidden;margin-top:6px}
+.uso-barra i{display:block;height:100%;background:var(--ouro)}
+.codigo-proj{font-family:Cinzel,serif;letter-spacing:.18em;color:var(--ouro);font-size:15px}
+.sl-codigo{width:100%;font-size:12.5px;color:var(--txt2)}
+.sl-codigo b{color:var(--ouro);letter-spacing:.14em}
+</style>
+</head>
+<body>
+
+<!-- ===================== TELA: ENTRAR ===================== -->
+<section id="entrar" class="tela acesso">
+  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <form class="acesso-caixa" id="form-entrar" autocomplete="on">
+    <div class="logo">
+      <img src="icon-192.png" alt="">
+      <h1>Pregador Visual</h1>
+      <p>Sermão, textos bíblicos, cronômetro e slides numa só tela.</p>
+    </div>
+    <div class="acesso-abas"><button type="button" data-aba="entrar" class="on">Entrar</button><button type="button" data-aba="criar">Criar conta</button></div>
+    <div class="so-criar oculto"><label class="rot" for="ac-nome">Seu nome</label><input id="ac-nome" autocomplete="name" placeholder="Ex.: Pr. João Silva"></div>
+    <div class="so-criar oculto"><label class="rot" for="ac-igreja">Igreja</label><input id="ac-igreja" autocomplete="organization" placeholder="Nome da sua igreja"></div>
+    <div><label class="rot" for="ac-email">E-mail</label><input id="ac-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" required></div>
+    <div><label class="rot" for="ac-senha">Senha</label><input id="ac-senha" type="password" autocomplete="current-password" minlength="6" required></div>
+    <div class="so-criar oculto"><label class="rot" for="ac-senha2">Repita a senha</label><input id="ac-senha2" type="password" autocomplete="new-password" minlength="6"></div>
+    <div class="acesso-erro" id="ac-erro"></div>
+    <button class="btn prim" type="submit" id="ac-enviar">Entrar</button>
+    <button class="acesso-link" type="button" id="ac-esqueci">Esqueci minha senha</button>
+  </form>
+</section>
+
+<!-- ===================== TELA: AGUARDANDO APROVAÇÃO ===================== -->
+<section id="aguardando" class="tela acesso">
+  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <div class="acesso-caixa">
+    <div class="logo"><img src="icon-192.png" alt=""><h1>Pregador Visual</h1></div>
+    <p class="acesso-msg" id="ag-msg"></p>
+    <button class="btn prim" id="ag-verificar">Verificar de novo</button>
+    <button class="btn" id="ag-sair">Sair desta conta</button>
+  </div>
+</section>
+
+<!-- ===================== TELA: INÍCIO ===================== -->
+<section id="inicio" class="tela">
+  <header class="topo">
+    <div class="marca">
+      <img src="icon-192.png" alt="">
+      <div>
+        <h1>Pregador Visual</h1>
+        <span class="versao" data-versao></span>
+      </div>
+    </div>
+    <span id="sinc" class="sinc"><i></i><span>—</span></span>
+    <button class="icone" data-tema title="Modo claro/escuro"></button>
+    <button class="icone" id="btn-conta" title="Minha conta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+    </button>
+    <button class="btn" id="btn-historico" title="Histórico de pregações">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      <span class="rl">Histórico</span>
+    </button>
+    <button class="btn prim" id="btn-novo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="rl">Novo sermão</span><span class="rc">Novo</span>
+    </button>
+  </header>
+  <main class="corpo">
+    <div class="barra-busca"><input id="busca" type="search" placeholder="Buscar sermão por título, culto ou texto…"></div>
+    <div id="lista" class="lista"></div>
+  </main>
+</section>
+
+<!-- ===================== TELA: EDITOR ===================== -->
+<section id="editor" class="tela">
+  <header class="topo">
+    <button class="icone" id="ed-voltar" title="Voltar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="marca"><h1 id="ed-cab" style="font-size:20px">Novo sermão</h1></div>
+    <button class="btn perigo oculto" id="ed-excluir">Excluir</button>
+    <button class="btn prim" id="ed-salvar">Salvar</button>
+  </header>
+  <main class="corpo">
+    <div class="form">
+      <div class="grupo">
+        <div><label class="rot" for="ed-titulo">Título</label><input id="ed-titulo" placeholder="Ex.: Intimidade com Cristo"></div>
+        <div><label class="rot" for="ed-data">Data</label><input id="ed-data" type="date"></div>
+        <div><label class="rot" for="ed-culto">Culto</label><input id="ed-culto" list="cultos" placeholder="Ex.: Manhã"><datalist id="cultos"><option value="Manhã"><option value="Tarde"><option value="Noite"><option value="Culto de Ensino"><option value="Santa Ceia"></datalist></div>
+      </div>
+
+      <div class="secao">
+        <h2 class="sec-cab">Sermão (Word) <button class="btn oculto" id="ed-corrigir" type="button">✏️ Corrigir texto</button></h2>
+        <div class="soltar" id="ed-soltar">
+          <strong>Toque aqui para escolher o arquivo .docx</strong><br>
+          <span class="dica">ou arraste o arquivo para cá</span>
+        </div>
+        <input type="file" id="ed-arquivo" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="oculto">
+        <div id="ed-info" class="dica"></div>
+        <div id="ed-previa" class="previa oculto"></div>
+      </div>
+
+      <div class="secao">
+        <h2>Slides para projeção (PDF) <span class="dica" style="margin:0;font-family:inherit">opcional</span></h2>
+        <div class="soltar" id="ed-sl-soltar"><strong>Toque aqui para escolher o PDF dos slides</strong><br><span class="dica">cada página vira um slide</span></div>
+        <input type="file" id="ed-sl-arq" accept="application/pdf,.pdf" class="oculto">
+        <div id="ed-sl-info" class="dica"></div>
+        <div id="ed-sl-grade" class="ed-sl-grade"></div>
+        <button class="btn perigo oculto" id="ed-sl-remover" style="margin-top:10px">Remover slides</button>
+      </div>
+
+      <div class="secao">
+        <h2>Textos bíblicos (NAA)
+          <button class="btn" id="ed-add-texto">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Adicionar texto
+          </button>
+        </h2>
+        <div id="ed-faltam"></div>
+        <p class="dica" style="margin:-4px 0 10px">Digite a referência como ela aparece no sermão (ex.: <b>Fp 3.7-14</b>). Se você já colou esse texto em outro sermão, ele aparece sozinho. No púlpito, toque na referência dentro do sermão para ver o texto. A marcada como “referência principal” fica fixa no topo, abaixo do título.</p>
+        <div id="ed-textos"></div>
+        <datalist id="refs-salvas"></datalist>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ===================== TELA: PÚLPITO ===================== -->
+<section id="pulpito" class="tela">
+  <header class="p-topo">
+    <div class="p-esq">
+      <button class="icone" id="p-voltar" title="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="p-cab-tit">
+        <span class="p-titulo" id="p-titulo"></span>
+        <button class="p-base oculto" id="p-base" title="Ver o texto principal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H2z"/><path d="M22 4h-7a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h8z"/></svg>
+          <span id="p-base-ref"></span>
+        </button>
+      </div>
+    </div>
+    <div class="p-relogios">
+      <div class="relogio">
+        <small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="rl">HORA ATUAL</span><span class="rc">HORA</span></small>
+        <b id="hora">--:--</b>
+      </div>
+      <div class="relogio parado azul" id="cron" title="Toque: iniciar/pausar · Segure: zerar">
+        <small><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4M10 2h4"/></svg><span class="rl">TEMPO DE MENSAGEM</span><span class="rc">TEMPO</span></small>
+        <b><span id="cron-valor">00:00</span><span id="cron-icone"></span></b>
+      </div>
+    </div>
+    <div class="p-dir">
+      <span class="versao" data-versao></span>
+      <button class="icone" data-tema title="Modo claro/escuro"></button>
+      <button class="icone" id="p-marcar" title="Marca-texto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+      </button>
+      <button class="icone" id="p-config" title="Configurações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="p-sub">
+    <span><span id="p-topico">Início</span><span class="versao v-mob" data-versao></span><button class="p-base p-base-mob oculto" id="p-base2"><span id="p-base-ref2"></span></button></span>
+    <div class="p-direita">
+      <div class="prox" id="p-prox">
+        <button id="p-prox-ir"></button>
+        <button id="p-prox-menu" title="Todos os tópicos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
+      <button class="sl-pill oculto" id="sl-pill" title="Slides da projeção">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span id="sl-rot">Slides</span><i class="pt" id="sl-pt"></i>
+        <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="sl-painel" class="sl-painel oculto">
+    <div class="sl-cab">
+      <span class="sl-status" id="sl-status"><i></i><span>Conectando…</span></span>
+      <span class="sl-codigo" id="sl-codigo"></span>
+      <div class="sl-botoes">
+        <button class="icone" id="sl-ant" title="Slide anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="icone" id="sl-seg" title="Próximo slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+        <button class="btn" id="sl-preta">Tela preta</button>
+      </div>
+    </div>
+    <div class="sl-grade" id="sl-grade"></div>
+  </div>
+  <div class="barra-marca">
+    <div class="seg" id="seg-ferr">
+      <button data-f="realce" title="Marca-texto"><mark class="amostra">ab</mark> Realce</button>
+      <button data-f="letra" title="Cor da letra"><b class="amostra-a">A</b> Cor da letra</button>
+      <button data-f="sub" title="Sublinhado"><u class="amostra-u">S</u> Sublinhar</button>
+      <button data-f="nota" title="Nota de púlpito">📌 Nota</button>
+      <button data-f="texto" title="Corrigir o texto">✏️ Texto</button>
+    </div>
+    <div class="cores">
+      <button class="cor" data-cor="amarelo" title="Amarelo"></button>
+      <button class="cor" data-cor="verde" title="Verde"></button>
+      <button class="cor" data-cor="vermelho" title="Vermelho"></button>
+      <button class="cor" data-cor="rosa" title="Rosa"></button>
+      <button class="cor" data-cor="azul" title="Azul"></button>
+    </div>
+    <span class="dica">Toque na frase: aplica · toque de novo: tira</span>
+    <button class="btn" id="mk-selecao">Aplicar na seleção</button>
+    <button class="btn prim" id="mk-concluir">Concluir</button>
+  </div>
+  <div id="menu-topicos" class="menu-topicos oculto"></div>
+  <div id="leitura"><article id="conteudo"></article><div class="fim-sermao"></div></div>
+  <div id="ct-fundo" class="ct-fundo oculto"></div>
+  <div id="caixa-texto" class="caixa-texto oculto" role="dialog">
+    <div class="ct-cab"><span class="ct-rot">TEXTO BÍBLICO</span><b id="ct-ref"></b>
+      <button class="icone" id="ct-fechar" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div id="ct-corpo" class="ct-corpo"></div>
+  </div>
+</section>
+
+<!-- configurações do púlpito -->
+<div class="fundo" id="fundo"></div>
+<aside class="painel" id="painel">
+  <h2>Configurações <button class="icone" id="painel-fechar" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+  <div class="opc"><label class="rot">Modo claro / escuro</label><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <div class="opc"><label class="rot">Tamanho da letra do sermão</label>
+    <div class="passo"><button class="icone" data-fs="-2">A−</button><b id="fs-valor">28</b><button class="icone" data-fs="2">A+</button></div></div>
+  <div class="opc"><label class="rot">Tamanho da letra do texto bíblico</label>
+    <div class="passo"><button class="icone" data-gfs="-2">A−</button><b id="gfs-valor">24</b><button class="icone" data-gfs="2">A+</button></div></div>
+  <div class="opc"><label class="rot">Tipo de letra</label>
+    <div class="seg" id="seg-fonte"><button data-v="sans">Sem serifa</button><button data-v="serif">Com serifa</button></div></div>
+  <div class="opc"><label class="rot">Espaço entre linhas</label>
+    <div class="seg" id="seg-lh"><button data-v="1.35">Justo</button><button data-v="1.5">Normal</button><button data-v="1.7">Amplo</button></div></div>
+  <div class="opc"><label class="rot">Notas de púlpito</label>
+    <div class="seg" id="seg-notas"><button data-v="visivel">Sempre visíveis</button><button data-v="icone">Só o ícone 📌</button></div></div>
+  <div class="opc"><label class="rot">Alinhamento</label>
+    <div class="seg" id="seg-al"><button data-v="left">À esquerda</button><button data-v="justify">Justificado</button></div></div>
+  <div class="opc"><label class="rot">Cronômetro</label>
+    <button class="btn" id="cron-zerar" style="width:100%;justify-content:center">Encerrar pregação / zerar</button>
+    <p class="dica">Azul até 30 min · amarelo de 30 a 40 · laranja de 40 a 50 · vermelho a partir de 50. Segurar o cronômetro por 1 segundo também encerra.</p></div>
+  <div class="opc"><label class="rot">Controle de apresentação</label><p class="dica">Avançar: próximo tópico · Voltar: tópico anterior · Botão do quadrado (tela preta): inicia/pausa o cronômetro.</p>
+    <button class="btn" id="ensinar-botao" style="width:100%;justify-content:center;margin-top:10px">Ensinar o botão do cronômetro</button>
+    <p class="dica" id="tecla-info"></p></div>
+  <div class="opc"><label class="rot">Projeção (data-show)</label><p class="dica" id="cfg-codigo">—</p></div>
+  <div class="opc"><label class="rot">Tela</label><p class="dica" id="tela-status">—</p></div>
+  <p class="versao" data-versao></p>
+</aside>
+
+<div id="modal" class="modal-fundo oculto"><div class="modal" id="modal-caixa"></div></div>
+<div id="balao" class="oculto"></div>
+<div id="aviso"></div>
+
+<script>
+/* ============================================================
+   PREGADOR VISUAL — púlpito digital para vários pastores
+   ============================================================ */
+const VERSAO = '2.0.0';
+
+// Banco de dados: tudo vem do config.js (já preenchido)
+const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
+
+// Pastor conectado neste aparelho (guardado para abrir mesmo sem internet)
+let USUARIO = null;
+try { USUARIO = JSON.parse(localStorage.getItem('pv.usuario') || 'null'); } catch {}
+// chaves locais separadas por pastor (dois pastores no mesmo iPad não se misturam)
+const K = k => 'pv.' + (USUARIO ? USUARIO.id : 'ninguem') + '.' + k;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const agora = () => new Date().toISOString();
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16); }));
+function aviso(msg, ms = 2600){ const a = $('#aviso'); a.textContent = msg; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(() => a.classList.remove('on'), ms); }
+function lerLS(k, padrao){ try { const v = localStorage.getItem(k); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } }
+function gravarLS(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+// chave normalizada da referência: "Fp 3:7-14" -> "fp3.7-14"
+function chaveRef(ref){
+  return String(ref || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\s+/g, '').replace(/:/g, '.').replace(/[–—]/g, '-');
+}
+
+/* ===================== TEMA (sol/lua) ===================== */
+const ICONE_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const ICONE_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme', t);
+  $('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#FBF7EE' : '#0F1B33');
+  $$('[data-tema]').forEach(b => b.innerHTML = t === 'light' ? ICONE_LUA : ICONE_SOL);
+  gravarLS('pv.tema', t);
+}
+$$('[data-tema]').forEach(b => b.addEventListener('click', () => aplicarTema(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light')));
+aplicarTema(lerLS('pv.tema', 'dark'));
+$$('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
+
+/* ===================== ARMAZENAMENTO LOCAL (IndexedDB) ===================== */
+let _db;
+function abrirDB(){
+  if (_db) return Promise.resolve(_db);
+  return new Promise((ok, erro) => {
+    if (!USUARIO) return erro(new Error('sem usuário'));
+    const r = indexedDB.open('pregador-visual-' + USUARIO.id, 3);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('sermoes')) d.createObjectStore('sermoes', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('textos')) d.createObjectStore('textos', { keyPath: 'chave' });
+      if (!d.objectStoreNames.contains('pregacoes')) d.createObjectStore('pregacoes', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('slides')){ const st = d.createObjectStore('slides', { keyPath: 'chave' }); st.createIndex('sermao', 'sermao_id'); }
+    };
+    r.onsuccess = () => { _db = r.result; ok(_db); };
+    r.onerror = () => erro(r.error);
+  });
+}
+async function dbTodos(loja){ const d = await abrirDB(); return new Promise((ok, erro) => { const q = d.transaction(loja).objectStore(loja).getAll(); q.onsuccess = () => ok(q.result || []); q.onerror = () => erro(q.error); }); }
+async function dbPegar(loja, k){ const d = await abrirDB(); return new Promise((ok, erro) => { const q = d.transaction(loja).objectStore(loja).get(k); q.onsuccess = () => ok(q.result); q.onerror = () => erro(q.error); }); }
+async function dbSlidesDe(sermaoId){ const d = await abrirDB(); return new Promise((ok, erro) => { const q = d.transaction('slides').objectStore('slides').index('sermao').getAll(IDBKeyRange.only(sermaoId)); q.onsuccess = () => ok((q.result || []).sort((a, b) => a.n - b.n)); q.onerror = () => erro(q.error); }); }
+async function dbApagarSlides(sermaoId){ const d = await abrirDB(); return new Promise((ok, erro) => { const t = d.transaction('slides', 'readwrite'); const q = t.objectStore('slides').index('sermao').openCursor(IDBKeyRange.only(sermaoId)); q.onsuccess = () => { const c = q.result; if (c){ c.delete(); c.continue(); } }; t.oncomplete = ok; t.onerror = () => erro(t.error); }); }
+async function dbGravar(loja, objs){ const d = await abrirDB(); return new Promise((ok, erro) => { const t = d.transaction(loja, 'readwrite'); const s = t.objectStore(loja); [].concat(objs).forEach(o => s.put(o)); t.oncomplete = ok; t.onerror = () => erro(t.error); }); }
+
+/* ===================== SINCRONIZAÇÃO COM O SUPABASE ===================== */
+// não deixa o app esperando para sempre quando a internet está fraca
+const comPrazo = (promessa, ms) => Promise.race([promessa, new Promise(ok => setTimeout(() => ok({ data: null, error: new Error('demorou demais') }), ms))]);
+// o "crachá" do pastor (renovado sozinho pelo Supabase) vai em cada pedido ao banco
+async function token(){
+  const s = sb(); if (!s) throw new Error('sem biblioteca');
+  const { data, error } = await comPrazo(s.auth.getSession(), 8000);
+  if (error) throw new Error('SEM_REDE ' + error.message);     // não conseguiu renovar (internet fraca): tenta depois
+  if (!data || !data.session) throw new Error('SEM_SESSAO');
+  return data.session.access_token;
+}
+const cab = async () => ({ apikey: SB_KEY, Authorization: 'Bearer ' + await token(), 'Content-Type': 'application/json', 'Accept-Profile': SCHEMA, 'Content-Profile': SCHEMA });
+let sincronizando = false;
+
+function statusSinc(tipo, txt){
+  const s = $('#sinc'); s.className = 'sinc ' + (tipo || ''); s.querySelector('span').textContent = txt;
+}
+const limpar = o => { const c = { ...o, user_id: USUARIO.id }; delete c._pendente; return c; };
+
+const TABELAS = [
+  { loja: 'sermoes',   chave: 'id' },
+  { loja: 'textos',    chave: 'user_id,chave' },
+  { loja: 'pregacoes', chave: 'id' }
+];
+async function sincTabela({ loja, chave }){
+  const h = await cab();
+  // 1) envia o que foi alterado sem internet
+  const pend = (await dbTodos(loja)).filter(x => x._pendente);
+  if (pend.length){
+    const r = await fetch(`${SB_URL}/rest/v1/${loja}?on_conflict=${chave}`, { method: 'POST', headers: { ...h, Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(pend.map(limpar)) });
+    if (!r.ok) throw new Error(loja + ' ' + r.status + ' ' + await r.text());
+    await dbGravar(loja, pend.map(x => ({ ...x, _pendente: false })));
+  }
+  // 2) baixa o que está na nuvem (outros aparelhos do mesmo pastor)
+  chave = loja === 'textos' ? 'chave' : chave;
+  const r = await fetch(`${SB_URL}/rest/v1/${loja}?select=*`, { headers: h });
+  if (!r.ok) throw new Error('baixar ' + loja + ' ' + r.status + ' ' + await r.text());
+  const nuvem = await r.json();
+  const loc = Object.fromEntries((await dbTodos(loja)).map(x => [x[chave], x]));
+  const novos = nuvem.filter(n => { const l = loc[n[chave]]; return !l || (!l._pendente && new Date(n.atualizado_em) > new Date(l.atualizado_em)); }).map(n => ({ ...n, _pendente: false }));
+  if (novos.length) await dbGravar(loja, novos);
+  return novos.length;
+}
+async function sincronizar(){
+  if (sincronizando || !USUARIO) return;
+  if (!navigator.onLine){ await mostrarPendencias(); return; }
+  sincronizando = true; statusSinc('', 'Sincronizando…');
+  let falhas = 0, mudou = 0;
+  for (const t of TABELAS){
+    try { mudou += await sincTabela(t); }
+    catch (e) {
+      console.error(e); falhas++;
+      const m = String(e.message);
+      if (m.includes('SEM_REDE') || /Failed to fetch|Load failed|NetworkError/i.test(m)) break;
+      if (m.includes('SEM_SESSAO')){ sincronizando = false; statusSinc('pend', 'Entre de novo na conta'); verificarConta(); return; }
+      if (m.includes('PGRST106')){ aviso('O schema "pregador" ainda não está liberado no Supabase (Exposed schemas).', 6000); break; }
+      if (m.includes('PGRST205') || m.includes('42P01')){ aviso('Falta rodar o schema.sql no Supabase.', 6000); break; }
+      if (m.includes('42501') || m.includes('row-level')){ verificarConta(); break; }
+    }
+  }
+  statusSinc(falhas ? 'pend' : '', falhas ? 'Sem conexão com o banco' : 'Salvo na nuvem');
+  sincronizando = false;
+  if (mudou && $('#inicio').classList.contains('ativa')) desenharLista();
+  enviarSlides();
+}
+async function mostrarPendencias(){
+  if (!USUARIO) return;
+  let p = false; for (const t of TABELAS) if ((await dbTodos(t.loja)).some(x => x._pendente)) p = true;
+  statusSinc(p ? 'pend' : 'off', p ? 'Sem internet · envio pendente' : 'Sem internet · tudo salvo no aparelho');
+}
+window.addEventListener('online', sincronizar);
+window.addEventListener('offline', mostrarPendencias);
+
+/* ===================== TELAS ===================== */
+function irPara(id){
+  $$('.tela').forEach(t => t.classList.toggle('ativa', t.id === id));
+  if (id !== 'pulpito') liberarTela();
+}
+
+/* ===================== REFERÊNCIAS BÍBLICAS ===================== */
+const LIVROS = {
+  gn:['genesis','gen','gn'], ex:['exodo','exo','ex'], lv:['levitico','lev','lv'], nm:['numeros','num','nm'], dt:['deuteronomio','deut','dt'],
+  js:['josue','jos','js'], jz:['juizes','jui','jz'], rt:['rute','rt'], sm:['samuel','sam','sm'], rs:['reis','rs'], cr:['cronicas','cron','cr'],
+  ed:['esdras','esd','ed'], ne:['neemias','ne'], et:['ester','est','et'], sl:['salmos','salmo','sal','sl'], pv:['proverbios','prov','pv'],
+  ec:['eclesiastes','ecl','ec'], ct:['cantares','canticos','cant','ct'], is:['isaias','isa','is'], jr:['jeremias','jer','jr'], lm:['lamentacoes','lam','lm'],
+  ez:['ezequiel','ez'], dn:['daniel','dan','dn'], os:['oseias','os'], jl:['joel','jl'], am:['amos','am'], ob:['obadias','ob'], jn:['jonas','jn'],
+  mq:['miqueias','mq'], na:['naum','na'], hc:['habacuque','hab','hc'], sf:['sofonias','sf'], ag:['ageu','ag'], zc:['zacarias','zac','zc'], ml:['malaquias','mal','ml'],
+  mt:['mateus','mt'], mc:['marcos','mc'], lc:['lucas','lc'], jo:['joao','jo'], at:['atos','at'], rm:['romanos','rom','rm'], co:['corintios','cor','co'],
+  gl:['galatas','gal','gl'], ef:['efesios','ef'], fp:['filipenses','fil','fp','fl'], cl:['colossenses','col','cl'], ts:['tessalonicenses','tes','ts'],
+  tm:['timoteo','tim','tm'], tt:['tito','tt'], fm:['filemom','filemon','fm'], hb:['hebreus','heb','hb'], tg:['tiago','tg'], pe:['pedro','ped','pe'],
+  jd:['judas','jd'], ap:['apocalipse','apoc','ap']
+};
+const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const NOME_LIVRO = {}; Object.entries(LIVROS).forEach(([id, ns]) => ns.forEach(n => NOME_LIVRO[n] = id));
+const RE_REF = (() => {
+  const classes = { a:'[aáàâã]', e:'[eéêè]', i:'[iíî]', o:'[oóôõ]', u:'[uúü]', c:'[cç]' };
+  const alt = Object.keys(NOME_LIVRO).sort((a, b) => b.length - a.length).map(n => n.replace(/[aeiouc]/g, ch => classes[ch])).join('|');
+  const V = '[1-9]\\d{0,2}', FAIXA = `${V}(?:\\s?[-–—]\\s?${V})?`;
+  return new RegExp(`(^|[^0-9A-Za-zÀ-ÿ])((?:([123])\\s?[ºª°]?\\s?)?(${alt})\\.?\\s?(\\d{1,3})\\s?[:.]\\s?(${FAIXA}(?:\\s?,\\s?${FAIXA})*)[a-c]?)(?![0-9A-Za-zÀ-ÿ])`, 'gi');
+})();
+function montarRef(num, token, cap, vers){
+  let id = NOME_LIVRO[semAcento(token)];
+  if (!id) return null;
+  if (id === 'jo' && /ó/i.test(token) && !num) id = 'jb';          // Jó (e não João)
+  const faixas = vers.split(',').map(f => f.split(/[-–—]/).map(x => parseInt(x, 10))).map(([a, b]) => [a, b || a]);
+  return { livro: (num || '') + id, cap: +cap, faixas, chave: `${num || ''}${id} ${+cap}:${faixas.map(([a, b]) => a === b ? a : a + '-' + b).join(',')}` };
+}
+// procura referências num texto corrido
+function acharRefs(txt){
+  const r = []; RE_REF.lastIndex = 0; let m;
+  while ((m = RE_REF.exec(txt))){
+    let [, antes, inteira, num, token, cap, vers] = m;
+    const ini = m.index + antes.length;
+    // "Jo 17.3, 2 Reis 4.3": o "2" depois da vírgula é o início do próximo livro, não um versículo
+    const resto = txt.slice(ini + inteira.length);
+    if (vers.includes(',') && /^\s?[ºª°]?\s?[A-ZÀ-Ý]/.test(resto)){
+      const ult = vers.split(',').pop().trim();
+      if (/^[123]$/.test(ult)){ vers = vers.slice(0, vers.lastIndexOf(',')); inteira = inteira.slice(0, inteira.lastIndexOf(',')); }
+    }
+    RE_REF.lastIndex = ini + inteira.length;
+    if (!num && token[0] !== token[0].toUpperCase()) continue;        // "os", "at", "na"... minúsculos não são livros
+    const ref = montarRef(num, token, cap, vers);
+    if (ref) r.push({ ini, fim: ini + inteira.length, bruto: inteira.trim(), ref });
+  }
+  return r;
+}
+// lê uma referência digitada no cadastro ("Fp 3.7-14", "João 17:3")
+function parseRef(txt){ const a = acharRefs(' ' + String(txt || '').trim() + ' '); return a.length ? a[0].ref : null; }
+// o texto cadastrado cobre a referência citada? (mesmo trecho ou trecho maior)
+function cobre(cad, cit){
+  if (!cad || !cit || cad.livro !== cit.livro || cad.cap !== cit.cap) return false;
+  return cit.faixas.every(([a, b]) => cad.faixas.some(([x, y]) => x <= a && b <= y));
+}
+function textoPara(ref, bruto, textos, cad){
+  let i = cad.findIndex(c => c && c.chave === ref.chave);
+  if (i < 0) i = cad.findIndex(c => cobre(c, ref));
+  if (i < 0) i = textos.findIndex((t, j) => !cad[j] && chaveRef(t.ref) === chaveRef(bruto));
+  return i;
+}
+// referências citadas num sermão (sem repetir)
+function referenciasDoHtml(html){
+  const d = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html');
+  const vistos = new Map();
+  nosDeTextoEm(d.body).forEach(no => acharRefs(no.nodeValue).forEach(a => { if (!vistos.has(a.ref.chave)) vistos.set(a.ref.chave, a); }));
+  return [...vistos.values()];
+}
+// quais referências do sermão ainda estão sem texto
+function refsSemTexto(html, textos){
+  const cad = textos.map(t => parseRef(t.ref));
+  return referenciasDoHtml(html).filter(a => {
+    const i = textoPara(a.ref, a.bruto, textos, cad);
+    return i < 0 || !String(textos[i].texto || '').trim();
+  });
+}
+
+/* ===================== LISTA DE SERMÕES ===================== */
+function fmtData(d){ if (!d) return 'Sem data'; const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a}`; }
+async function desenharLista(){
+  const termo = chaveRef($('#busca').value).replace(/\./g, '');
+  let lista = (await dbTodos('sermoes')).filter(s => !s.excluido);
+  const hist = {};
+  (await dbTodos('pregacoes')).filter(h => !h.excluido).forEach(h => (hist[h.sermao_id] = hist[h.sermao_id] || []).push(h));
+  Object.values(hist).forEach(v => v.sort((a, b) => (b.data || '').localeCompare(a.data || '') || (b.criado_em || '').localeCompare(a.criado_em || '')));
+  lista.sort((a, b) => (b.data_pregacao || '').localeCompare(a.data_pregacao || '') || (b.atualizado_em || '').localeCompare(a.atualizado_em || ''));
+  if (termo) lista = lista.filter(s => chaveRef([s.titulo, s.culto, ...(s.textos || []).map(t => t.ref)].join(' ')).replace(/\./g, '').includes(termo));
+  const el = $('#lista');
+  if (!lista.length){
+    el.innerHTML = $('#busca').value
+      ? '<div class="vazio" style="grid-column:1/-1">Nenhum sermão encontrado.</div>'
+      : '<div class="vazio" style="grid-column:1/-1"><img src="icon-192.png" alt=""><br>Nenhum sermão ainda.<br>Toque em <b>Novo sermão</b>, escolha o arquivo do Word e acrescente os textos bíblicos.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(s => `
+    <div class="cartao">
+      <h3>${esc(s.titulo)}</h3>
+      <div class="meta">${fmtData(s.data_pregacao)}${s.culto ? ' · ' + esc(s.culto) : ''}${(s.textos || []).length ? ' · ' + s.textos.length + ' texto(s)' : ''}${s._pendente ? ' · <span style="color:var(--t-amarelo)">envio pendente</span>' : ''}</div>
+      ${(() => { const f = refsSemTexto(s.conteudo_html, s.textos || []); return f.length ? `<div class="meta alerta">⚠ Falta o texto de: ${f.slice(0, 4).map(a => esc(a.bruto)).join(', ')}${f.length > 4 ? ' e mais ' + (f.length - 4) : ''}</div>` : ''; })()}
+      ${hist[s.id] ? `<div class="meta pregado">Pregado ${hist[s.id].length}× · último em ${fmtData(hist[s.id][0].data)}${hist[s.id][0].culto ? ' (' + esc(hist[s.id][0].culto) + ')' : ''}${hist[s.id][0].local ? ' · ' + esc(hist[s.id][0].local) : ''}</div>` : ''}
+      <div class="acoes">
+        <button class="btn prim" data-pregar="${s.id}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Pregar
+        </button>
+        <button class="btn" data-editar="${s.id}">Editar</button>
+        ${hist[s.id] ? `<button class="btn" data-hist="${s.id}">Histórico</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+$('#busca').addEventListener('input', desenharLista);
+$('#lista').addEventListener('click', e => {
+  const p = e.target.closest('[data-pregar]'); if (p) return abrirPulpito(p.dataset.pregar);
+  const ed = e.target.closest('[data-editar]'); if (ed) return abrirEditor(ed.dataset.editar);
+  const hi = e.target.closest('[data-hist]'); if (hi) return abrirHistorico(hi.dataset.hist);
+});
+
+/* ===================== EDITOR ===================== */
+let edAtual = null;        // sermão em edição
+let edHtml = '';           // conteúdo convertido do Word
+let bibliotecaTextos = {}; // chave -> texto salvo
+
+async function carregarBiblioteca(){
+  bibliotecaTextos = Object.fromEntries((await dbTodos('textos')).map(t => [t.chave, t]));
+  $('#refs-salvas').innerHTML = Object.values(bibliotecaTextos).sort((a, b) => a.ref.localeCompare(b.ref, 'pt')).map(t => `<option value="${esc(t.ref)}">`).join('');
+}
+
+async function abrirEditor(id){
+  await carregarBiblioteca();
+  if (id){ edAtual = await dbPegar('sermoes', id); }
+  else { edAtual = { id: uid(), titulo: '', data_pregacao: proximoDomingo(), culto: '', conteudo_html: '', textos: [], base_idx: 0, excluido: false, criado_em: agora() }; }
+  edHtml = edAtual.conteudo_html || '';
+  $('#ed-cab').textContent = id ? 'Editar sermão' : 'Novo sermão';
+  $('#ed-excluir').classList.toggle('oculto', !id);
+  $('#ed-titulo').value = edAtual.titulo || '';
+  $('#ed-data').value = edAtual.data_pregacao || '';
+  $('#ed-culto').value = edAtual.culto || '';
+  $('#ed-arquivo').value = '';
+  mostrarPrevia(id ? 'Sermão já carregado. Escolha outro arquivo só se quiser substituí-lo.' : '');
+  edSlides = null; mostrarSlidesEditor();
+  setTimeout(verificarFaltantes, 0);
+  $('#ed-textos').innerHTML = '';
+  (edAtual.textos.length ? edAtual.textos : [{ ref: '', texto: '' }]).forEach((t, i) => addLinhaTexto(t, i === (edAtual.base_idx || 0)));
+  irPara('editor');
+}
+function proximoDomingo(){
+  const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function mostrarPrevia(info){
+  const zona = $('#ed-soltar'), prev = $('#ed-previa');
+  if (edHtml){
+    const tops = contarTopicos(edHtml);
+    zona.classList.add('cheio');
+    zona.innerHTML = '<strong>✓ Sermão carregado</strong><br><span class="dica">Toque para trocar o arquivo</span>';
+    $('#ed-info').innerHTML = (info ? esc(info) + '<br>' : '') + (tops ? `Encontrei <b>${tops}</b> tópico(s) pelos títulos do Word.` : 'Não encontrei títulos. O sermão vai aparecer como texto corrido, sem a navegação por tópicos.');
+    prev.innerHTML = edHtml; prev.classList.remove('oculto');
+    sairCorrecaoEditor(false);
+    if (typeof verificarFaltantes === 'function') verificarFaltantes();
+  } else {
+    zona.classList.remove('cheio');
+    zona.innerHTML = '<strong>Toque aqui para escolher o arquivo .docx</strong><br><span class="dica">ou arraste o arquivo para cá</span>';
+    $('#ed-info').textContent = info || ''; prev.classList.add('oculto');
+  }
+}
+function addLinhaTexto(t = { ref: '', texto: '' }, base = false){
+  const box = $('#ed-textos');
+  const linha = document.createElement('div');
+  linha.className = 'texto-linha';
+  linha.innerHTML = `
+    <div>
+      <input class="t-ref" list="refs-salvas" placeholder="Ex.: Fp 3.7-14" value="${esc(t.ref)}">
+      <label class="base-opc"><input type="radio" name="base" ${base ? 'checked' : ''}> Referência principal</label>
+      <div class="dica t-msg"></div>
+    </div>
+    <textarea class="t-texto" placeholder="Cole aqui o texto da NAA (só na primeira vez que usar esta referência)">${esc(t.texto)}</textarea>
+    <button class="icone t-remover" title="Remover texto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
+  const ref = linha.querySelector('.t-ref'), txt = linha.querySelector('.t-texto'), msg = linha.querySelector('.t-msg');
+  const buscar = () => {
+    const salvo = bibliotecaTextos[chaveRef(ref.value)];
+    if (salvo && !txt.value.trim()){ txt.value = salvo.texto; msg.innerHTML = '<span class="achou">✓ texto já salvo</span>'; }
+    else if (salvo){ msg.innerHTML = '<span class="achou">✓ referência conhecida</span>'; }
+    else msg.textContent = '';
+  };
+  ref.addEventListener('change', buscar); ref.addEventListener('blur', buscar);
+  linha.querySelector('.t-remover').addEventListener('click', () => {
+    linha.remove();
+    if (!box.querySelector('input[name=base]:checked')){ const r = box.querySelector('input[name=base]'); if (r) r.checked = true; }
+  });
+  box.appendChild(linha);
+  if (!box.querySelector('input[name=base]:checked')) linha.querySelector('input[name=base]').checked = true;
+  return linha;
+}
+$('#ed-add-texto').addEventListener('click', () => addLinhaTexto().querySelector('.t-ref').focus());
+
+// Word -> HTML
+const MAPA_ESTILOS = [
+  "p[style-name='Title'] => h1:fresh", "p[style-name='Título'] => h1:fresh",
+  "p[style-name='Subtitle'] => h3:fresh", "p[style-name='Subtítulo'] => h3:fresh",
+  "p[style-name='Heading 1'] => h1:fresh", "p[style-name='Título 1'] => h1:fresh",
+  "p[style-name='Heading 2'] => h2:fresh", "p[style-name='Título 2'] => h2:fresh",
+  "p[style-name='Heading 3'] => h3:fresh", "p[style-name='Título 3'] => h3:fresh",
+  "p[style-name='Quote'] => blockquote > p:fresh", "p[style-name='Citação'] => blockquote > p:fresh",
+  "p[style-name='Intense Quote'] => blockquote > p:fresh", "p[style-name='Citação Intensa'] => blockquote > p:fresh",
+  "highlight[color='green'] => mark.mk-verde:fresh", "highlight[color='brightGreen'] => mark.mk-verde:fresh", "highlight[color='darkGreen'] => mark.mk-verde:fresh",
+  "highlight[color='magenta'] => mark.mk-rosa:fresh", "highlight[color='red'] => mark.mk-rosa:fresh", "highlight[color='pink'] => mark.mk-rosa:fresh",
+  "highlight[color='cyan'] => mark.mk-azul:fresh", "highlight[color='turquoise'] => mark.mk-azul:fresh", "highlight[color='blue'] => mark.mk-azul:fresh",
+  "highlight => mark:fresh",
+  "u => u", "strike => s"
+];
+async function lerWord(arquivo){
+  if (!/\.docx$/i.test(arquivo.name)){ aviso('Escolha um arquivo do Word (.docx).'); return; }
+  try {
+    $('#ed-info').textContent = 'Convertendo…';
+    const r = await mammoth.convertToHtml({ arrayBuffer: await arquivo.arrayBuffer() }, { styleMap: MAPA_ESTILOS });
+    edHtml = ajustarHtml(r.value);
+    if (!$('#ed-titulo').value.trim()){
+      const d = new DOMParser().parseFromString(edHtml, 'text/html');
+      const h = d.querySelector('h1') || d.querySelector('h2');
+      $('#ed-titulo').value = h ? tituloBonito(h.textContent) : arquivo.name.replace(/\.docx$/i, '');
+    }
+    mostrarPrevia('Arquivo: ' + arquivo.name);
+  } catch (e) { console.error(e); aviso('Não consegui ler este arquivo do Word.'); $('#ed-info').textContent = ''; }
+}
+function tituloBonito(t){
+  t = t.trim();
+  if (t === t.toUpperCase()) t = t.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase()).replace(/\b(De|Da|Do|Das|Dos|E|Com|Em|No|Na|A|O|Para|Por)\b/g, w => w.toLowerCase()).replace(/^./, c => c.toUpperCase());
+  return t;
+}
+function ajustarHtml(html){
+  const d = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
+  const raiz = d.body.firstChild;
+  // tira parágrafos vazios
+  raiz.querySelectorAll('p').forEach(p => { if (!p.textContent.trim() && !p.querySelector('img')) p.remove(); });
+  // se o Word não usou estilos de título, transforma parágrafos curtos todo em negrito em títulos
+  if (!raiz.querySelector('h1,h2,h3')){
+    raiz.querySelectorAll('p').forEach(p => {
+      const txt = p.textContent.trim();
+      const tudoNegrito = p.childNodes.length === 1 && p.firstChild.nodeName === 'STRONG';
+      if (tudoNegrito && txt.length <= 90 && !/[.;,]$/.test(txt)){
+        const h = d.createElement('h2'); h.textContent = txt; p.replaceWith(h);
+      }
+    });
+    const primeiro = raiz.querySelector('h2');
+    if (primeiro && primeiro === raiz.firstElementChild && raiz.querySelectorAll('h2').length > 2){
+      const h = d.createElement('h1'); h.textContent = primeiro.textContent; primeiro.replaceWith(h);
+    }
+  }
+  return raiz.innerHTML;
+}
+function contarTopicos(html){
+  const d = new DOMParser().parseFromString(html, 'text/html');
+  return d.querySelectorAll('h2').length || d.querySelectorAll('h1').length || d.querySelectorAll('h3').length;
+}
+$('#ed-soltar').addEventListener('click', () => {
+  // trocar o Word apaga o que foi marcado no app
+  const temMarcas = /<(mark|span class="(fc|sb|nota))/.test(edHtml);
+  if (temMarcas && !confirm('Trocar o arquivo do Word apaga os realces, sublinhados, cores e notas feitos no app.\n\nPara só corrigir um erro, use “Corrigir texto”.\n\nTrocar o arquivo mesmo assim?')) return;
+  $('#ed-arquivo').click();
+});
+/* corrigir o texto no editor, sem perder as marcações */
+let edEditado = false;
+function sairCorrecaoEditor(guardar){
+  const prev = $('#ed-previa');
+  if (guardar && edEditado){ edHtml = limparHtmlEditado(prev); verificarFaltantes(); }
+  prev.contentEditable = 'false'; prev.classList.remove('editando');
+  $('#ed-corrigir').classList.remove('on'); $('#ed-corrigir').textContent = '✏️ Corrigir texto';
+  $('#ed-corrigir').classList.toggle('oculto', !edHtml);
+}
+function limparHtmlEditado(raiz){
+  const c = raiz.cloneNode(true);
+  c.querySelectorAll('.gerado').forEach(x => x.remove());
+  c.querySelectorAll('[contenteditable]').forEach(x => x.removeAttribute('contenteditable'));
+  c.querySelectorAll('p,h1,h2,h3,li').forEach(x => { if (!x.textContent.trim() && !x.querySelector('img,.nota')) x.remove(); });
+  c.normalize();
+  return c.innerHTML;
+}
+$('#ed-corrigir').addEventListener('click', () => {
+  const prev = $('#ed-previa');
+  if (prev.isContentEditable){ sairCorrecaoEditor(true); aviso('Correção guardada. Toque em Salvar para gravar.'); return; }
+  edEditado = false;
+  prev.querySelectorAll('.nota').forEach(n => n.contentEditable = 'false');
+  prev.contentEditable = 'true'; prev.classList.add('editando');
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
+  $('#ed-corrigir').classList.add('on'); $('#ed-corrigir').textContent = '✓ Concluir correção';
+  prev.focus();
+});
+$('#ed-previa').addEventListener('input', () => { edEditado = true; });
+$('#ed-arquivo').addEventListener('change', e => { if (e.target.files[0]) lerWord(e.target.files[0]); });
+['dragover', 'dragenter'].forEach(ev => $('#ed-soltar').addEventListener(ev, e => { e.preventDefault(); }));
+$('#ed-soltar').addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) lerWord(e.dataTransfer.files[0]); });
+
+$('#ed-salvar').addEventListener('click', async () => {
+  const titulo = $('#ed-titulo').value.trim();
+  if (!titulo) return aviso('Dê um título ao sermão.');
+  if ($('#ed-previa').isContentEditable) sairCorrecaoEditor(true);
+  if (!edHtml) return aviso('Escolha o arquivo do sermão em Word.');
+  const linhas = $$('#ed-textos .texto-linha');
+  const textos = []; let base = 0; const paraBiblioteca = [];
+  for (const l of linhas){
+    const ref = l.querySelector('.t-ref').value.trim(), texto = l.querySelector('.t-texto').value.trim();
+    if (!ref && !texto) continue;
+    if (!ref) return aviso('Há um texto sem referência.');
+    if (l.querySelector('input[name=base]').checked) base = textos.length;
+    textos.push({ ref, texto });
+    const ch = chaveRef(ref), salvo = bibliotecaTextos[ch];
+    if (texto && (!salvo || salvo.texto !== texto)) paraBiblioteca.push({ chave: ch, ref, texto, versao: 'NAA', atualizado_em: agora(), _pendente: true });
+  }
+  if (lendoPdf) return aviso('Espere terminar a conversão dos slides.');
+  { const f = refsSemTexto(edHtml, textos);
+    if (f.length && !confirm(`O sermão cita ${f.length} referência(s) sem texto cadastrado:\n\n${f.map(a => '• ' + a.bruto).join('\n')}\n\nNo púlpito elas vão abrir sem o texto. Salvar assim mesmo?`)) { verificarFaltantes(); return; } }
+  const s = { ...edAtual, titulo, data_pregacao: $('#ed-data').value || null, culto: $('#ed-culto').value.trim(), conteudo_html: edHtml, textos, base_idx: base, atualizado_em: agora(), _pendente: true };
+  if (edSlides && edSlides.length && navigator.onLine){
+    // cabe no espaço da conta?
+    const u = await meuUso();
+    if (u){
+      const novo = edSlides.reduce((t, x) => t + (x.full ? x.full.size : 0), 0);
+      if (u.usado_bytes + novo > u.limite_mb * 1048576 &&
+          !confirm(`Estes slides (${(novo / 1048576).toFixed(1)} MB) passam do seu espaço na nuvem (${(u.usado_bytes / 1048576).toFixed(1)} de ${u.limite_mb} MB usados).\n\nEles ficarão só neste aparelho e o projetor talvez não consiga mostrá-los. Salvar assim mesmo?`)) return;
+    }
+  }
+  if (edSlides !== null){
+    // slides trocados ou removidos
+    const antigos = (edAtual.slides || []).map(x => x.path);
+    if (antigos.length) gravarLS(K('apagarSlides'), [...lerLS(K('apagarSlides'), []), ...antigos]);
+    await dbApagarSlides(s.id);
+    if (edSlides.length){
+      const v = Date.now();
+      const recs = edSlides.map((sl, i) => ({ chave: `${s.id}/${i + 1}`, sermao_id: s.id, n: i + 1, full: sl.full, thumb: sl.thumb, path: `${USUARIO.id}/${s.id}/${v}-${i + 1}.jpg`, enviado: false }));
+      await dbGravar('slides', recs);
+      s.slides = recs.map(r => ({ n: r.n, path: r.path })); s.slides_v = v;
+    } else { s.slides = []; s.slides_v = null; }
+  }
+  await dbGravar('sermoes', s);
+  if (paraBiblioteca.length) await dbGravar('textos', paraBiblioteca);
+  aviso('Sermão salvo');
+  irPara('inicio'); desenharLista(); sincronizar();
+});
+$('#ed-excluir').addEventListener('click', async () => {
+  if (!confirm(`Excluir o sermão “${edAtual.titulo}”?`)) return;
+  await dbGravar('sermoes', { ...edAtual, excluido: true, atualizado_em: agora(), _pendente: true });
+  aviso('Sermão excluído'); irPara('inicio'); desenharLista(); sincronizar();
+});
+$('#ed-voltar').addEventListener('click', () => { irPara('inicio'); desenharLista(); });
+$('#btn-novo').addEventListener('click', () => abrirEditor(null));
+
+/* ===================== EDITOR: referências sem texto ===================== */
+function textosDoFormulario(){
+  return $$('#ed-textos .texto-linha').map(l => ({ ref: l.querySelector('.t-ref').value.trim(), texto: l.querySelector('.t-texto').value.trim() })).filter(t => t.ref);
+}
+function daBiblioteca(ref, bruto){
+  const lista = Object.values(bibliotecaTextos);
+  const cad = lista.map(t => parseRef(t.ref));
+  const i = textoPara(ref, bruto, lista, cad);
+  return i >= 0 ? lista[i] : null;
+}
+let _verifFaltam;
+function verificarFaltantes(){
+  clearTimeout(_verifFaltam);
+  _verifFaltam = setTimeout(() => {
+    const box = $('#ed-faltam'); if (!box) return;
+    if (!edHtml){ box.innerHTML = ''; return; }
+    const todas = referenciasDoHtml(edHtml);
+    const faltam = refsSemTexto(edHtml, textosDoFormulario());
+    if (!todas.length){ box.innerHTML = ''; return; }
+    if (!faltam.length){ box.innerHTML = `<div class="faltam ok">✓ Todas as ${todas.length} referência(s) citadas no sermão têm texto.</div>`; return; }
+    const naBib = faltam.filter(a => daBiblioteca(a.ref, a.bruto)).length;
+    box.innerHTML = `<div class="faltam"><b>⚠ O sermão cita ${faltam.length} referência(s) sem texto cadastrado:</b>
+      <div class="refs">${faltam.map(a => `<span>${esc(a.bruto)}</span>`).join('')}</div>
+      <button class="btn" id="ed-add-faltam" type="button">Acrescentar ${faltam.length > 1 ? 'estas referências' : 'esta referência'} abaixo</button>
+      ${naBib ? `<span class="dica"> · ${naBib} já ${naBib > 1 ? 'estão' : 'está'} na sua biblioteca e ${naBib > 1 ? 'virão' : 'virá'} com o texto</span>` : ''}</div>`;
+    $('#ed-add-faltam').onclick = () => {
+      // aproveita linhas vazias e acrescenta as que faltam
+      faltam.forEach(a => {
+        const existente = $$('#ed-textos .texto-linha').find(l => { const r = parseRef(l.querySelector('.t-ref').value); return r ? r.chave === a.ref.chave : chaveRef(l.querySelector('.t-ref').value) === chaveRef(a.bruto); });
+        const bib = daBiblioteca(a.ref, a.bruto);
+        if (existente){ if (bib && !existente.querySelector('.t-texto').value.trim()) existente.querySelector('.t-texto').value = bib.texto; return; }
+        const vazia = $$('#ed-textos .texto-linha').find(l => !l.querySelector('.t-ref').value.trim() && !l.querySelector('.t-texto').value.trim());
+        const linha = vazia || addLinhaTexto();
+        linha.querySelector('.t-ref').value = a.bruto;
+        if (bib) linha.querySelector('.t-texto').value = bib.texto;
+      });
+      verificarFaltantes();
+      const prim = $$('#ed-textos .t-texto').find(t => !t.value.trim()); if (prim) prim.focus();
+    };
+  }, 250);
+}
+$('#ed-textos').addEventListener('input', verificarFaltantes);
+$('#ed-textos').addEventListener('click', e => { if (e.target.closest('.t-remover')) setTimeout(verificarFaltantes, 50); });
+
+/* ===================== SLIDES (editor) ===================== */
+let edSlides = null;      // null = sem mudança · [] = remover · [{full, thumb}] = novos
+let lendoPdf = false, urlsEditor = [];
+function soltarUrls(lista){ lista.forEach(u => { try { URL.revokeObjectURL(u); } catch {} }); lista.length = 0; }
+async function mostrarSlidesEditor(){
+  soltarUrls(urlsEditor);
+  const grade = $('#ed-sl-grade'), zona = $('#ed-sl-soltar');
+  let itens = [];
+  if (edSlides !== null) itens = edSlides.map((sl, i) => ({ n: i + 1, src: (urlsEditor[urlsEditor.length] = URL.createObjectURL(sl.thumb)) }));
+  else if ((edAtual.slides || []).length){
+    const locais = Object.fromEntries((await dbSlidesDe(edAtual.id)).map(r => [r.n, r]));
+    itens = edAtual.slides.map(x => ({ n: x.n, src: locais[x.n] ? (urlsEditor[urlsEditor.length] = URL.createObjectURL(locais[x.n].thumb)) : urlSlide(x.path) }));
+  }
+  grade.innerHTML = itens.map(it => `<figure><img src="${it.src}" alt=""><figcaption>${it.n}</figcaption></figure>`).join('');
+  $('#ed-sl-remover').classList.toggle('oculto', !itens.length);
+  zona.classList.toggle('cheio', !!itens.length);
+  zona.innerHTML = itens.length ? `<strong>✓ ${itens.length} slide(s)</strong><br><span class="dica">Toque para trocar o PDF</span>` : '<strong>Toque aqui para escolher o PDF dos slides</strong><br><span class="dica">cada página vira um slide</span>';
+  if (!lendoPdf && edSlides !== null && !edSlides.length) $('#ed-sl-info').textContent = (edAtual.slides || []).length ? 'Os slides serão removidos ao salvar.' : '';
+  if (edSlides === null && !lendoPdf) $('#ed-sl-info').textContent = '';
+}
+const paraBlob = (cv, q) => new Promise(ok => cv.toBlob(ok, 'image/jpeg', q));
+async function lerPdfSlides(arq){
+  if (!/\.pdf$/i.test(arq.name) && arq.type !== 'application/pdf') return aviso('Escolha um arquivo PDF.');
+  lendoPdf = true; const info = $('#ed-sl-info');
+  try {
+    info.textContent = 'Abrindo o PDF…';
+    const pdfjs = await import('./pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = './pdf.worker.min.mjs';
+    const doc = await pdfjs.getDocument({ data: await arq.arrayBuffer() }).promise;
+    const novos = [];
+    for (let i = 1; i <= doc.numPages; i++){
+      info.textContent = `Convertendo slide ${i} de ${doc.numPages}…`;
+      const pg = await doc.getPage(i);
+      const v1 = pg.getViewport({ scale: 1 });
+      const esc_ = Math.min(1920 / v1.width, 1440 / v1.height);
+      const vp = pg.getViewport({ scale: esc_ });
+      const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      await pg.render({ canvasContext: cx, viewport: vp }).promise;
+      const full = await paraBlob(cv, 0.86);
+      const tw = 360, th = Math.round(cv.height * tw / cv.width);
+      const cm = document.createElement('canvas'); cm.width = tw; cm.height = th; cm.getContext('2d').drawImage(cv, 0, 0, tw, th);
+      const thumb = await paraBlob(cm, 0.72);
+      cv.width = cv.height = 0; cm.width = cm.height = 0; pg.cleanup();
+      novos.push({ full, thumb });
+    }
+    doc.destroy();
+    edSlides = novos;
+    info.textContent = `${novos.length} slide(s) prontos. Toque em Salvar para guardar.`;
+  } catch (e){ console.error(e); aviso('Não consegui ler este PDF.'); info.textContent = ''; }
+  finally { lendoPdf = false; mostrarSlidesEditor(); }
+}
+$('#ed-sl-soltar').addEventListener('click', () => { if (!lendoPdf) $('#ed-sl-arq').click(); });
+$('#ed-sl-arq').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) lerPdfSlides(f); });
+['dragover', 'dragenter'].forEach(ev => $('#ed-sl-soltar').addEventListener(ev, e => e.preventDefault()));
+$('#ed-sl-soltar').addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && !lendoPdf) lerPdfSlides(f); });
+$('#ed-sl-remover').addEventListener('click', () => { if (confirm('Remover os slides deste sermão?')){ edSlides = []; mostrarSlidesEditor(); } });
+
+/* ===================== SLIDES (envio para a nuvem) ===================== */
+let _sb = null, enviandoSlides = false;
+function sb(){
+  if (!_sb && window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth', detectSessionInUrl: false }
+  });
+  return _sb;
+}
+const urlSlide = path => `${SB_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+async function enviarSlides(){
+  if (enviandoSlides || !navigator.onLine || !sb() || !USUARIO || USUARIO.situacao !== 'aprovado') return;
+  enviandoSlides = true;
+  try {
+    // primeiro apaga os slides antigos (libera espaço antes de enviar os novos)
+    const apagar = lerLS(K('apagarSlides'), []);
+    if (apagar.length){ const { error } = await sb().storage.from(BUCKET).remove(apagar); if (!error) gravarLS(K('apagarSlides'), []); }
+    const d = await abrirDB();
+    const pend = await new Promise((ok, erro) => { const q = d.transaction('slides').objectStore('slides').getAll(); q.onsuccess = () => ok(q.result.filter(r => !r.enviado)); q.onerror = () => erro(q.error); });
+    let i = 0;
+    for (const r of pend){
+      i++; statusSinc('', `Enviando slides ${i}/${pend.length}…`);
+      const { error } = await sb().storage.from(BUCKET).upload(r.path, r.full, { upsert: true, contentType: 'image/jpeg', cacheControl: '31536000' });
+      if (error){
+        console.error(error); statusSinc('pend', 'Slides não enviados');
+        if (/policy|row-level|403|unauthorized/i.test(error.message)){
+          const u = await meuUso();
+          if (u && u.usado_bytes >= u.limite_mb * 1048576) aviso(`Seu espaço para slides acabou (${u.limite_mb} MB). Os slides ficam só neste aparelho. Remova slides de sermões antigos ou fale com o administrador.`, 9000);
+          else aviso('Não consegui enviar os slides. Verifique sua conta.', 6000);
+        } else if (/bucket|not found/i.test(error.message)) aviso('Falta rodar o schema.sql no Supabase para enviar os slides.', 7000);
+        return;
+      }
+      await dbGravar('slides', { ...r, enviado: true });
+    }
+    if (pend.length){ statusSinc('', 'Salvo na nuvem'); if ($('#pulpito').classList.contains('ativa')) pintarSlides(); }
+  } catch (e){ console.error(e); }
+  finally { enviandoSlides = false; }
+}
+
+/* ===================== CONTA DO PASTOR (login, aprovação, espaço) ===================== */
+async function meuUso(){
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/meu_uso`, { method: 'POST', headers: await cab(), body: '{}' });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+async function buscarPerfil(sess){
+  const r = await fetch(`${SB_URL}/rest/v1/perfis?id=eq.${sess.user.id}&select=*`, {
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + sess.access_token, 'Accept-Profile': SCHEMA }
+  });
+  if (!r.ok){
+    const t = await r.text();
+    if (t.includes('PGRST106')) throw new Error('O schema "pregador" ainda não está liberado no Supabase (Exposed schemas).');
+    throw new Error('Não consegui ler sua conta (' + r.status + '). Verifique se o schema.sql foi rodado.');
+  }
+  const l = await r.json();
+  if (!l.length) throw new Error('Sua conta não tem perfil. Rode o schema.sql no Supabase e entre de novo.');
+  return l[0];
+}
+function salvarUsuario(p){
+  USUARIO = { id: p.id, email: p.email, nome: p.nome || '', igreja: p.igreja || '', situacao: p.situacao, admin: !!p.admin, plano: p.plano, limite_mb: p.limite_mb, codigo: p.codigo_projecao };
+  try { localStorage.setItem('pv.usuario', JSON.stringify(USUARIO)); } catch {}
+}
+function encerrarLocal(msg){
+  try { localStorage.removeItem('pv.usuario'); if (msg) sessionStorage.setItem('pv.msg', msg); } catch {}
+  location.reload();
+}
+
+function mostrarAguardando(){
+  const nome = USUARIO && USUARIO.nome ? ', ' + USUARIO.nome.split(' ').slice(0, 2).join(' ') : '';
+  $('#ag-msg').innerHTML = USUARIO && USUARIO.situacao === 'bloqueado'
+    ? 'Esta conta está <b>bloqueada</b>.<br>Fale com o administrador do Pregador Visual.'
+    : `Olá${esc(nome)}! Sua conta foi criada e está <b>aguardando aprovação</b> do administrador.<br><br>Assim que for aprovada, toque em “Verificar de novo”.`;
+  irPara('aguardando');
+}
+async function entrarNoApp(){
+  irPara('inicio'); mostrarCodigo();
+  await desenharLista(); sincronizar();
+}
+
+// confere na nuvem se a conta continua valendo (e se foi aprovada/bloqueada)
+let verificando = false;
+async function verificarConta(){
+  if (verificando || !navigator.onLine || !sb()) return;
+  verificando = true;
+  try {
+    const { data, error } = await comPrazo(sb().auth.getSession(), 15000);
+    if (error) return;                                  // sem rede de verdade: segue com o que tem no aparelho
+    const sess = data && data.session;
+    if (!sess){ if (USUARIO) encerrarLocal('Sua sessão terminou. Entre de novo.'); return; }
+    const p = await buscarPerfil(sess);
+    const antes = USUARIO, outro = !antes || antes.id !== p.id;
+    salvarUsuario(p);
+    if (outro || (p.situacao === 'aprovado') !== (antes.situacao === 'aprovado')) return location.reload();
+    if (p.situacao !== 'aprovado') mostrarAguardando();
+    else mostrarCodigo();
+  } catch (e){ console.error(e); }
+  finally { verificando = false; }
+}
+
+function traduzErro(e){
+  const m = String((e && e.message) || e || '');
+  if (/Invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+  if (/already registered|already exists/i.test(m)) return 'Já existe uma conta com este e-mail. Use a aba “Entrar”.';
+  if (/Email not confirmed/i.test(m)) return 'Este e-mail ainda não foi confirmado.';
+  if (/Password should|at least 6|weak/i.test(m)) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (/valid email|invalid format|Unable to validate email/i.test(m)) return 'Confira o e-mail digitado.';
+  if (/rate limit|too many|security purposes/i.test(m)) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+  if (/Signups not allowed/i.test(m)) return 'A criação de contas está desligada no momento.';
+  if (/fetch|network|Load failed/i.test(m)) return 'Sem internet. Para entrar é preciso estar conectado.';
+  return m || 'Algo deu errado. Tente de novo.';
+}
+
+let abaAcesso = 'entrar';
+function pintarAba(){
+  $$('[data-aba]').forEach(b => b.classList.toggle('on', b.dataset.aba === abaAcesso));
+  $$('.so-criar').forEach(x => x.classList.toggle('oculto', abaAcesso !== 'criar'));
+  $('#ac-enviar').textContent = abaAcesso === 'criar' ? 'Criar minha conta' : 'Entrar';
+  $('#ac-senha').setAttribute('autocomplete', abaAcesso === 'criar' ? 'new-password' : 'current-password');
+  $('#ac-esqueci').classList.toggle('oculto', abaAcesso === 'criar');
+  $('#ac-erro').textContent = '';
+}
+$$('[data-aba]').forEach(b => b.addEventListener('click', () => { abaAcesso = b.dataset.aba; pintarAba(); }));
+$('#form-entrar').addEventListener('submit', async e => {
+  e.preventDefault();
+  const erro = $('#ac-erro'), botao = $('#ac-enviar');
+  const email = $('#ac-email').value.trim().toLowerCase(), senha = $('#ac-senha').value;
+  erro.textContent = '';
+  if (!sb()) return erro.textContent = 'Não consegui carregar o app. Recarregue a página.';
+  if (abaAcesso === 'criar'){
+    if (!$('#ac-nome').value.trim()) return erro.textContent = 'Digite seu nome.';
+    if (senha.length < 6) return erro.textContent = 'A senha precisa ter pelo menos 6 caracteres.';
+    if (senha !== $('#ac-senha2').value) return erro.textContent = 'As duas senhas não são iguais.';
+  }
+  botao.disabled = true; const txt = botao.textContent; botao.textContent = 'Aguarde…';
+  try {
+    let res;
+    if (abaAcesso === 'criar') res = await sb().auth.signUp({ email, password: senha, options: { data: { nome: $('#ac-nome').value.trim(), igreja: $('#ac-igreja').value.trim() } } });
+    else res = await sb().auth.signInWithPassword({ email, password: senha });
+    if (res.error) throw res.error;
+    const sess = res.data.session;
+    if (!sess){ erro.textContent = 'Conta criada, mas o Supabase está pedindo confirmação por e-mail. O administrador precisa desligar “Confirm email”.'; return; }
+    salvarUsuario(await buscarPerfil(sess));
+    location.reload();
+  } catch (e2){ console.error(e2); erro.textContent = traduzErro(e2); }
+  finally { botao.disabled = false; botao.textContent = txt; }
+});
+$('#ac-esqueci').addEventListener('click', () => abrirModal(`
+  <h2>Esqueci minha senha</h2>
+  <p class="sub" style="font-size:16px;line-height:1.55">Por enquanto, a troca de senha é feita pelo administrador do Pregador Visual. Fale com ele e informe o e-mail da sua conta.</p>
+  <div class="acoes"><button class="btn prim" onclick="fecharModal()">Entendi</button></div>`));
+
+$('#ag-verificar').addEventListener('click', async () => {
+  if (!navigator.onLine) return aviso('Sem internet.');
+  await verificarConta();
+  if (USUARIO && USUARIO.situacao !== 'aprovado') aviso(USUARIO.situacao === 'bloqueado' ? 'A conta continua bloqueada.' : 'Ainda aguardando aprovação.');
+});
+async function sairDaConta(){
+  let pend = false;
+  try { for (const t of TABELAS) if ((await dbTodos(t.loja)).some(x => x._pendente)) pend = true; } catch {}
+  if (pend && !confirm('Há alterações neste aparelho que ainda não foram enviadas para a nuvem. Se sair agora, elas só voltam quando você entrar de novo neste mesmo aparelho.\n\nSair assim mesmo?')) return;
+  try { await comPrazo(sb().auth.signOut({ scope: 'local' }), 3000); } catch {}
+  try { localStorage.removeItem('pv-auth'); } catch {}
+  encerrarLocal();
+}
+$('#ag-sair').addEventListener('click', sairDaConta);
+
+// código que o notebook do data-show pede para receber os slides deste pastor
+const urlProjetor = () => new URL('projetor.html', location.href).href;
+function mostrarCodigo(){
+  const c = USUARIO && USUARIO.codigo;
+  $('#sl-codigo').innerHTML = c ? `Código do projetor: <b>${esc(c)}</b>` : '';
+  $('#cfg-codigo').innerHTML = c ? `No notebook do data-show, abra <b>${esc(urlProjetor().replace(/^https?:\/\//, ''))}</b> e digite o código <b class="codigo-proj">${esc(c)}</b>.` : '—';
+}
+
+$('#btn-conta').addEventListener('click', async () => {
+  const u = USUARIO || {};
+  abrirModal(`
+    <h2>Minha conta <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+    <div class="conta-linha"><span>Nome</span><b>${esc(u.nome || '—')}</b></div>
+    <div class="conta-linha"><span>Igreja</span><b>${esc(u.igreja || '—')}</b></div>
+    <div class="conta-linha"><span>E-mail</span><b>${esc(u.email || '—')}</b></div>
+    <div class="conta-linha"><span>Plano</span><b>${esc(u.plano || 'gratuito')}${u.admin ? ' · administrador' : ''}</b></div>
+    <div class="conta-linha" style="display:block"><div style="display:flex;justify-content:space-between"><span>Espaço para slides</span><b id="conta-uso">${navigator.onLine ? 'calculando…' : 'sem internet'}</b></div><div class="uso-barra"><i id="conta-uso-barra" style="width:0"></i></div></div>
+    <div class="conta-linha" style="display:block"><span>Projeção</span><p class="dica" style="margin-top:6px">${$('#cfg-codigo').innerHTML}</p></div>
+    <div class="acoes" style="margin-top:16px"><button class="btn perigo" id="conta-sair">Sair da conta</button><button class="btn prim" onclick="fecharModal()">Fechar</button></div>`);
+  $('#conta-sair').onclick = () => { fecharModal(); sairDaConta(); };
+  if (navigator.onLine){
+    const uso = await meuUso();
+    const el = $('#conta-uso'); if (!el) return;
+    if (!uso){ el.textContent = '—'; return; }
+    const mb = uso.usado_bytes / 1048576, pc = Math.min(100, mb / uso.limite_mb * 100);
+    el.textContent = `${mb.toFixed(1)} de ${uso.limite_mb} MB`;
+    $('#conta-uso-barra').style.width = pc + '%';
+    if (pc >= 90) $('#conta-uso-barra').style.background = 'var(--perigo)';
+  }
+});
+
+/* ===================== PÚLPITO ===================== */
+let pAtual = null, topicos = [], textoAtivo = 0;
+
+const celular = Math.min(innerWidth, innerHeight) < 600;
+const cfgPadrao = { fs: celular ? 20 : 28, gfs: celular ? 19 : 24, fonte: 'sans', lh: '1.5', al: 'left', notas: 'visivel' };
+let cfg = { ...cfgPadrao, ...lerLS('pv.cfg', {}) };
+function aplicarCfg(){
+  const c = $('#conteudo');
+  c.style.setProperty('--fs', cfg.fs + 'px'); c.style.setProperty('--lh', cfg.lh); c.style.setProperty('--al', cfg.al);
+  c.classList.toggle('serif', cfg.fonte === 'serif');
+  document.documentElement.style.setProperty('--gfs', cfg.gfs + 'px');
+  $('#fs-valor').textContent = cfg.fs; $('#gfs-valor').textContent = cfg.gfs;
+  $$('#seg-fonte button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.fonte));
+  $$('#seg-lh button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.lh));
+  $$('#seg-al button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.al));
+  $$('#seg-notas button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.notas));
+  gravarLS('pv.cfg', cfg);
+  if (typeof renderNotas === 'function') renderNotas();
+}
+$$('[data-fs]').forEach(b => b.addEventListener('click', () => { cfg.fs = Math.min(56, Math.max(16, cfg.fs + +b.dataset.fs)); aplicarCfg(); atualizarTopico(); }));
+$$('[data-gfs]').forEach(b => b.addEventListener('click', () => { cfg.gfs = Math.min(44, Math.max(16, cfg.gfs + +b.dataset.gfs)); aplicarCfg(); }));
+[['#seg-fonte', 'fonte'], ['#seg-lh', 'lh'], ['#seg-al', 'al'], ['#seg-notas', 'notas']].forEach(([sel, k]) =>
+  $$(sel + ' button').forEach(b => b.addEventListener('click', () => { cfg[k] = b.dataset.v; aplicarCfg(); })));
+
+function abrirPainel(on){ $('#painel').classList.toggle('aberto', on); $('#fundo').classList.toggle('on', on); }
+$('#p-config').addEventListener('click', () => abrirPainel(true));
+$('#painel-fechar').addEventListener('click', () => abrirPainel(false));
+$('#fundo').addEventListener('click', () => abrirPainel(false));
+
+async function abrirPulpito(id){
+  pAtual = await dbPegar('sermoes', id);
+  if (!pAtual) return;
+  $('#p-titulo').textContent = pAtual.titulo;
+  $('#conteudo').innerHTML = pAtual.conteudo_html || '<p>(sermão vazio)</p>';
+  ligarReferencias();
+  aplicarCfg();   // também desenha as notas
+  // tópicos: usa os títulos de nível 2; se não houver, nível 1; senão nível 3
+  const c = $('#conteudo');
+  topicos = [...c.querySelectorAll('h2')];
+  if (!topicos.length) topicos = [...c.querySelectorAll('h1')];
+  if (!topicos.length) topicos = [...c.querySelectorAll('h3')];
+  $('#p-prox').classList.toggle('oculto', !topicos.length);
+  // gaveta
+  fecharTextoBiblico(); ajustarFolga();
+  { const tx = pAtual.textos || [], bi = Math.min(pAtual.base_idx || 0, tx.length - 1);
+    $('#p-base').classList.toggle('oculto', !tx.length); $('#p-base2').classList.toggle('oculto', !tx.length);
+    if (tx.length){ $('#p-base-ref').textContent = $('#p-base-ref2').textContent = tx[bi].ref; $('#p-base').dataset.i = bi; } }
+  irPara('pulpito');
+  // volta ao ponto onde parou (se recarregar no meio da pregação)
+  const pos = lerLS(K('pos'), {});
+  $('#leitura').scrollTop = pos[id] || 0;
+  atualizarTopico();
+  segurarTela();
+  prepararSlides();
+}
+$('#p-voltar').addEventListener('click', () => { modoMarcar(false); abrirSlides(false); $('#menu-topicos').classList.add('oculto'); irPara('inicio'); desenharLista(); });
+
+// liga as referências citadas no sermão aos textos cadastrados (reconhece formas diferentes de escrever)
+function ligarReferencias(){
+  const textos = pAtual.textos || [];
+  if (!textos.length) return;
+  const cad = textos.map(t => parseRef(t.ref));
+  const usados = new Set();
+  nosDeTextoEm($('#conteudo')).forEach(no => {
+    if (no.parentElement.closest('.ref-link,.gerado')) return;
+    const s_ = no.nodeValue, achados = acharRefs(s_).map(a => ({ ...a, t: textoPara(a.ref, a.bruto, textos, cad) })).filter(a => a.t >= 0);
+    if (!achados.length) return;
+    const frag = document.createDocumentFragment(); let ult = 0;
+    achados.forEach(a => {
+      frag.appendChild(document.createTextNode(s_.slice(ult, a.ini)));
+      const sp = document.createElement('span'); sp.className = 'ref-link'; sp.dataset.t = a.t; sp.textContent = s_.slice(a.ini, a.fim);
+      frag.appendChild(sp); ult = a.fim; usados.add(a.t);
+    });
+    frag.appendChild(document.createTextNode(s_.slice(ult)));
+    no.replaceWith(frag);
+  });
+  // referências cadastradas num formato que o app não reconhece: procura o texto igual
+  const literais = textos.map((t, i) => ({ i, t })).filter(x => !cad[x.i] && !usados.has(x.i));
+  if (!literais.length) return;
+  const partes = literais.map(x => ({ i: x.i, re: x.t.ref.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\.|:/g, '[.:]').replace(/\s+/g, '\\s*').replace(/-|–|—/g, '[-–—]') })).sort((a, b) => b.re.length - a.re.length);
+  const re = new RegExp(partes.map(p => `(${p.re})`).join('|'), 'gi');
+  nosDeTextoEm($('#conteudo')).forEach(no => {
+    if (no.parentElement.closest('.ref-link,.gerado')) return;
+    const s_ = no.nodeValue; re.lastIndex = 0; if (!re.test(s_)) return; re.lastIndex = 0;
+    const frag = document.createDocumentFragment(); let ult = 0, m;
+    while ((m = re.exec(s_))){
+      const g = m.slice(1).findIndex(x => x !== undefined);
+      frag.appendChild(document.createTextNode(s_.slice(ult, m.index)));
+      const sp = document.createElement('span'); sp.className = 'ref-link'; sp.dataset.t = partes[g].i; sp.textContent = m[0];
+      frag.appendChild(sp); ult = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(s_.slice(ult)));
+    no.replaceWith(frag);
+  });
+}
+function nosDeTextoEm(raiz){ const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT); const r = []; while (w.nextNode()) r.push(w.currentNode); return r; }
+$('#conteudo').addEventListener('click', e => {
+  if ($('#pulpito').classList.contains('marcando')) return;
+  const r = e.target.closest('.ref-link'); if (!r) return;
+  const i = +r.dataset.t;
+  if (!$('#caixa-texto').classList.contains('oculto') && $('#caixa-texto')._i === i) return fecharTextoBiblico();
+  abrirTextoBiblico(i);
+});
+
+// caixa do texto bíblico
+function abrirTextoBiblico(i){
+  const t = (pAtual.textos || [])[i]; if (!t) return;
+  const cx = $('#caixa-texto'); cx._i = i;
+  $('#ct-ref').textContent = t.ref; $('#ct-corpo').textContent = String(t.texto || '').trim() || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
+  cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
+  $('#p-base').classList.toggle('on', String(i) === $('#p-base').dataset.i);
+}
+function fecharTextoBiblico(){ $('#caixa-texto').classList.add('oculto'); $('#ct-fundo').classList.add('oculto'); $('#p-base').classList.remove('on'); }
+['#p-base', '#p-base2'].forEach(sel => $(sel).addEventListener('click', e => {
+  e.stopPropagation();
+  const i = +$('#p-base').dataset.i;
+  if (!$('#caixa-texto').classList.contains('oculto') && $('#caixa-texto')._i === i) return fecharTextoBiblico();
+  abrirTextoBiblico(i);
+}));
+
+$('#ct-fechar').addEventListener('click', fecharTextoBiblico);
+$('#ct-fundo').addEventListener('click', fecharTextoBiblico);
+(() => {   // tocar no texto fecha (rolar o texto não fecha)
+  let y0 = 0, mov = false; const c = $('#ct-corpo');
+  c.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; mov = false; }, { passive: true });
+  c.addEventListener('touchmove', e => { if (Math.abs(e.touches[0].clientY - y0) > 8) mov = true; }, { passive: true });
+  c.addEventListener('click', () => { if (mov){ mov = false; return; } fecharTextoBiblico(); });
+})();
+
+// tópico atual / próximo
+function atualizarTopico(){
+  if (!pAtual) return;
+  const L = $('#leitura'), linha = L.getBoundingClientRect().top + L.clientHeight * 0.35;
+  let idx = -1;
+  topicos.forEach((h, i) => { if (h.getBoundingClientRect().top <= linha) idx = i; });
+  $('#p-topico').textContent = !topicos.length ? '' : idx < 0 ? 'Início' : (innerWidth <= 600 ? `${idx + 1} / ${topicos.length}` : `Tópico ${idx + 1} de ${topicos.length}`);
+  const prox = topicos[idx + 1];
+  $('#p-prox-ir').innerHTML = prox ? 'Próximo: ' + esc(prox.textContent.trim()) : 'Último tópico';
+  $('#p-prox-ir').dataset.i = idx + 1;
+  $('#p-prox-ir').disabled = !prox;
+  topicos._atual = idx;
+}
+let _salvarPos;
+$('#leitura').addEventListener('scroll', () => {
+  atualizarTopico();
+  clearTimeout(_salvarPos);
+  _salvarPos = setTimeout(() => { const pos = lerLS(K('pos'), {}); pos[pAtual.id] = $('#leitura').scrollTop; gravarLS(K('pos'), pos); }, 400);
+}, { passive: true });
+function irTopico(i){ const h = topicos[i]; if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#menu-topicos').classList.add('oculto'); }
+$('#p-prox-ir').addEventListener('click', e => irTopico(+e.currentTarget.dataset.i));
+$('#p-prox-menu').addEventListener('click', e => {
+  e.stopPropagation();
+  const m = $('#menu-topicos');
+  if (!m.classList.contains('oculto')) return m.classList.add('oculto');
+  m.innerHTML = topicos.map((h, i) => `<button data-i="${i}" class="${i === topicos._atual ? 'atual' : ''}">${esc(h.textContent.trim())}</button>`).join('');
+  m.classList.remove('oculto');
+});
+$('#menu-topicos').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) irTopico(+b.dataset.i); });
+document.addEventListener('click', e => { if (!e.target.closest('#menu-topicos')) $('#menu-topicos').classList.add('oculto'); });
+
+function ajustarFolga(){ /* deixa espaço no fim para o último parágrafo subir até o alto */ $('.fim-sermao').style.setProperty('--folga', Math.round($('#leitura').clientHeight * 0.6) + 'px'); }
+window.addEventListener('resize', () => { ajustarFolga(); atualizarTopico(); });
+
+
+/* ===================== SLIDES NO PÚLPITO + PROJETOR ===================== */
+let slidesP = [], urlsPulpito = [];
+let projEstado = { sermao_id: null, titulo: '', slides: [], atual: null, preta: false, t: 0 };
+let canal = null, canalOk = false, ultimoVivo = 0, batida = null, faltamEnviar = 0;
+async function prepararSlides(){
+  soltarUrls(urlsPulpito);
+  const lista = (pAtual.slides || []);
+  $('#sl-pill').classList.toggle('oculto', !lista.length);
+  if (!lista.length){ slidesP = []; abrirSlides(false); pararBatida(); return; }
+  const locais = Object.fromEntries((await dbSlidesDe(pAtual.id)).map(r => [r.n, r]));
+  faltamEnviar = Object.values(locais).filter(r => !r.enviado).length;
+  slidesP = lista.map(x => ({ n: x.n, url: urlSlide(x.path), mini: locais[x.n] ? (urlsPulpito[urlsPulpito.length] = URL.createObjectURL(locais[x.n].thumb)) : urlSlide(x.path) }));
+  // novo sermão = projetor começa em tela preta; mesmo sermão = mantém onde estava
+  if (projEstado.sermao_id !== pAtual.id) projEstado = { sermao_id: pAtual.id, titulo: pAtual.titulo, slides: slidesP.map(x => x.url), atual: null, preta: false, t: 0 };   // t: 0 = ainda não tocou em nada (não muda o projetor)
+  else projEstado.slides = slidesP.map(x => x.url);
+  $('#sl-grade').innerHTML = slidesP.map(x => `<button class="sl-mini" data-n="${x.n}"><img src="${x.mini}" alt="" loading="lazy"><span>${x.n}</span></button>`).join('');
+  conectarProjetor(); iniciarBatida(); pintarSlides();
+  if (faltamEnviar) enviarSlides();
+}
+function pintarSlides(){
+  if (!slidesP.length) return;
+  $$('#sl-grade .sl-mini').forEach(b => b.classList.toggle('atual', +b.dataset.n === projEstado.atual));
+  $('#sl-painel').classList.toggle('preta', projEstado.preta);
+  $('#sl-preta').classList.toggle('on', projEstado.preta);
+  $('#sl-preta').textContent = projEstado.preta ? 'Voltar o slide' : 'Tela preta';
+  $('#sl-rot').textContent = projEstado.preta ? 'Tela preta' : projEstado.atual ? `Slide ${projEstado.atual}/${slidesP.length}` : `Slides (${slidesP.length})`;
+  const vivo = Date.now() - ultimoVivo < 12000;
+  const tipo = !canalOk ? '' : vivo ? 'ok' : 'meio';
+  const txt = !navigator.onLine ? 'Sem internet no iPad' : !canalOk ? 'Conectando…' : vivo ? 'Projetor conectado' : 'Projetor não está aberto';
+  $('#sl-status').className = 'sl-status ' + tipo;
+  $('#sl-status span').textContent = txt + (faltamEnviar ? ` · ${faltamEnviar} slide(s) sem enviar` : '');
+  $('#sl-pt').className = 'pt ' + tipo;
+}
+function abrirSlides(on){
+  const pn = $('#sl-painel'), pill = $('#sl-pill');
+  if (on === undefined) on = pn.classList.contains('oculto');
+  pn.classList.toggle('oculto', !on); pill.classList.toggle('aberto', on);
+  if (on){
+    const r = pill.getBoundingClientRect();
+    pn.style.top = (r.bottom + 6) + 'px';
+    if (innerWidth > 600) pn.style.right = Math.max(12, innerWidth - r.right) + 'px';
+    const atual = $('#sl-grade .sl-mini.atual'); if (atual) atual.scrollIntoView({ block: 'nearest' });
+  }
+}
+$('#sl-pill').addEventListener('click', e => { e.stopPropagation(); $('#menu-topicos').classList.add('oculto'); abrirSlides(); });
+function projetar(n){
+  projEstado.atual = n; projEstado.preta = false; projEstado.t = Date.now();
+  enviarEstado(); pintarSlides();
+}
+$('#sl-grade').addEventListener('click', e => { const b = e.target.closest('.sl-mini'); if (b) projetar(+b.dataset.n); });
+$('#sl-ant').addEventListener('click', () => { const n = projEstado.atual || 1; if (n > 1) projetar(n - 1); else projetar(1); });
+$('#sl-seg').addEventListener('click', () => { const n = projEstado.atual || 0; if (n < slidesP.length) projetar(n + 1); else aviso('Último slide'); });
+$('#sl-preta').addEventListener('click', () => { projEstado.preta = !projEstado.preta; projEstado.t = Date.now(); enviarEstado(); pintarSlides(); });
+
+function conectarProjetor(){
+  if (canal || !sb() || !USUARIO || !USUARIO.codigo) return;
+  canal = sb().channel('pv-proj-' + USUARIO.codigo, { config: { broadcast: { self: false } } });
+  canal.on('broadcast', { event: 'vivo' }, () => { ultimoVivo = Date.now(); pintarSlides(); })
+       .on('broadcast', { event: 'estado' }, ({ payload: e }) => {
+         if (!e || (e.t || 0) <= (projEstado.t || 0)) return;
+         if (e.sermao_id === projEstado.sermao_id){ projEstado.atual = e.atual; projEstado.preta = e.preta; }
+         projEstado.t = e.t; pintarSlides();
+       })
+       .on('broadcast', { event: 'pedido' }, () => { if ($('#pulpito').classList.contains('ativa') && slidesP.length) enviarEstado(); })
+       .subscribe(st => { canalOk = st === 'SUBSCRIBED'; pintarSlides(); if (canalOk && slidesP.length) enviarEstado(); });
+}
+function enviarEstado(){
+  if (!canal || !canalOk) return;
+  canal.send({ type: 'broadcast', event: 'estado', payload: projEstado }).catch(() => {});
+}
+function iniciarBatida(){ pararBatida(); batida = setInterval(() => { if ($('#pulpito').classList.contains('ativa') && slidesP.length){ enviarEstado(); pintarSlides(); } }, 4000); }
+function pararBatida(){ if (batida) clearInterval(batida); batida = null; }
+window.addEventListener('online', () => { if (slidesP.length) pintarSlides(); });
+window.addEventListener('offline', () => { if (slidesP.length) pintarSlides(); });
+
+/* ===================== CORRIGIR O TEXTO NO PÚLPITO ===================== */
+let corrigindo = false, _salvarTexto;
+function correcaoPulpito(on){
+  const c = $('#conteudo');
+  if (on === corrigindo) return;
+  corrigindo = on;
+  $('#pulpito').classList.toggle('editando-texto', on);
+  if (on){
+    c.querySelectorAll('.gerado, .nota').forEach(x => x.contentEditable = 'false');
+    c.contentEditable = 'true';
+    try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
+  } else {
+    c.contentEditable = 'false';
+    clearTimeout(_salvarTexto);
+    if (c._editado){ c._editado = false; salvarRealces(); redesenharSermao(); aviso('Correção salva'); }
+  }
+}
+$('#conteudo').addEventListener('input', () => {
+  if (!corrigindo) return;
+  $('#conteudo')._editado = true;
+  clearTimeout(_salvarTexto);
+  _salvarTexto = setTimeout(() => { if (corrigindo) salvarRealces(); }, 2500);   // guarda enquanto você digita
+});
+// redesenha o sermão a partir do que foi salvo (refaz tópicos, referências e notas), sem sair do lugar
+function redesenharSermao(){
+  const L = $('#leitura'), topo = L.scrollTop;
+  $('#conteudo').innerHTML = pAtual.conteudo_html || '';
+  ligarReferencias(); renderNotas();
+  const c = $('#conteudo');
+  topicos = [...c.querySelectorAll('h2')];
+  if (!topicos.length) topicos = [...c.querySelectorAll('h1')];
+  if (!topicos.length) topicos = [...c.querySelectorAll('h3')];
+  $('#p-prox').classList.toggle('oculto', !topicos.length);
+  L.scrollTop = topo; atualizarTopico();
+}
+
+/* ===================== MARCA-TEXTO (realce · cor da letra · sublinhado) ===================== */
+const FERRAMENTAS = {
+  realce: { tag: 'mark', classe: c => 'mk-' + c,      seletor: 'mark' },
+  letra:  { tag: 'span', classe: c => 'fc fc-' + c,   seletor: 'span.fc' },
+  sub:    { tag: 'span', classe: c => 'sb sb-' + c,   seletor: 'span.sb, u' }
+};
+let corMarca = lerLS('pv.cor', 'amarelo');
+let ferramenta = lerLS('pv.ferr', 'realce');
+if (!FERRAMENTAS[ferramenta] && ferramenta !== 'nota') ferramenta = 'realce';   // 'texto' nunca fica salvo como padrão
+function modoMarcar(on){
+  if (!on) correcaoPulpito(false);
+  $('#pulpito').classList.toggle('marcando', on);
+  $('#p-marcar').classList.toggle('on', on);
+  if (!on){ const sel = getSelection(); if (sel) sel.removeAllRanges(); }
+  ajustarFolga();
+}
+$('#p-marcar').addEventListener('click', () => modoMarcar(!$('#pulpito').classList.contains('marcando')));
+$('#mk-concluir').addEventListener('click', () => modoMarcar(false));
+function pintarBarra(){
+  correcaoPulpito(ferramenta === 'texto' && $('#pulpito').classList.contains('marcando'));
+  $('#seg-ferr').closest('.barra-marca').querySelector('.dica').textContent = ferramenta === 'texto'
+    ? 'Toque no texto e corrija como num editor · as marcações continuam' : 'Toque na frase: aplica · toque de novo: tira';
+  $$('.cor').forEach(b => b.classList.toggle('on', b.dataset.cor === corMarca));
+  $$('#seg-ferr button').forEach(b => b.classList.toggle('on', b.dataset.f === ferramenta));
+  $('.barra-marca').dataset.f = ferramenta;
+}
+$$('.cor').forEach(b => b.addEventListener('click', () => { corMarca = b.dataset.cor; gravarLS('pv.cor', corMarca); pintarBarra(); }));
+$$('#seg-ferr button').forEach(b => b.addEventListener('click', () => { ferramenta = b.dataset.f; if (ferramenta !== 'texto') gravarLS('pv.ferr', ferramenta); pintarBarra(); }));
+$('#p-marcar').addEventListener('click', () => pintarBarra());
+pintarBarra();
+
+const BLOCOS = 'p,li,blockquote,h1,h2,h3,h4,h5,h6,td,th';
+function nosDeTexto(raiz){ const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT); const r = []; while (w.nextNode()) r.push(w.currentNode); return r; }
+
+// aplica a ferramenta atual em cada pedaço de texto do intervalo
+function destacar(range){
+  if (range.collapsed) return false;
+  const F = FERRAMENTAS[ferramenta];
+  const nos = nosDeTexto($('#conteudo')).filter(n => range.intersectsNode(n) && n.nodeValue.length);
+  const grupo = 'g' + Date.now().toString(36);
+  let fez = false;
+  nos.forEach(n => {
+    const ini = n === range.startContainer ? range.startOffset : 0;
+    const fim = n === range.endContainer ? range.endOffset : n.nodeValue.length;
+    if (fim <= ini) return;
+    if (n.parentElement.closest(F.seletor)) return;        // já tem este destaque
+    let alvo = n;
+    if (ini > 0) alvo = alvo.splitText(ini);
+    if (fim - ini < alvo.nodeValue.length) alvo.splitText(fim - ini);
+    if (!alvo.nodeValue.trim()) return;
+    const el = document.createElement(F.tag);
+    el.className = F.classe(corMarca);
+    el.dataset.g = grupo;
+    alvo.replaceWith(el); el.appendChild(alvo); fez = true;
+  });
+  return fez;
+}
+function apagarDestaque(el){
+  const lista = el.dataset.g ? $$(`#conteudo [data-g="${el.dataset.g}"]`).filter(x => x.matches(FERRAMENTAS[ferramenta].seletor)) : [el];
+  lista.forEach(x => { const pai = x.parentNode; while (x.firstChild) pai.insertBefore(x.firstChild, x); x.remove(); pai.normalize(); });
+}
+// acha a frase no ponto tocado
+function fraseNoPonto(x, y){
+  let no, off;
+  if (document.caretRangeFromPoint){ const r = document.caretRangeFromPoint(x, y); if (!r) return null; no = r.startContainer; off = r.startOffset; }
+  else if (document.caretPositionFromPoint){ const p = document.caretPositionFromPoint(x, y); if (!p) return null; no = p.offsetNode; off = p.offset; }
+  if (!no || no.nodeType !== 3) return null;
+  const bloco = no.parentElement.closest(BLOCOS);
+  if (!bloco || !$('#conteudo').contains(bloco)) return null;
+  const nos = nosDeTexto(bloco);
+  let pos = 0, total = '';
+  nos.forEach(n => { if (n === no) pos = total.length + off; total += n.nodeValue; });
+  // limites da frase: . ! ? … seguidos de espaço, ou início/fim do bloco
+  const fimFrase = /[.!?…](["”’)»]*)\s/g;
+  let ini = 0, fim = total.length, m;
+  while ((m = fimFrase.exec(total))){
+    const corte = m.index + 1 + m[1].length;
+    if (corte <= pos) ini = corte; else { fim = corte; break; }
+  }
+  while (ini < fim && /\s/.test(total[ini])) ini++;
+  while (fim > ini && /\s/.test(total[fim - 1])) fim--;
+  if (fim <= ini) return null;
+  const range = document.createRange(); let acc = 0, okIni = false;
+  for (const n of nos){
+    const L = n.nodeValue.length;
+    if (!okIni && ini < acc + L){ range.setStart(n, ini - acc); okIni = true; }
+    if (okIni && fim <= acc + L){ range.setEnd(n, fim - acc); break; }
+    acc += L;
+  }
+  range._bloco = bloco; range._ini = ini; range._fim = fim;
+  return range;
+}
+function salvarRealces(){
+  const copia = $('#conteudo').cloneNode(true);
+  const desembrulhar = x => { const pai = x.parentNode; while (x.firstChild) pai.insertBefore(x.firstChild, x); x.remove(); };
+  copia.querySelectorAll('.gerado').forEach(x => x.remove());
+  copia.querySelectorAll('[contenteditable]').forEach(x => x.removeAttribute('contenteditable'));
+  copia.querySelectorAll('.ref-link').forEach(desembrulhar);
+  ['mark', 'span.fc', 'span.sb'].forEach(sel => copia.querySelectorAll(sel).forEach(x => { if (x.parentElement && x.parentElement.closest(sel)) desembrulhar(x); }));
+  copia.normalize();
+  pAtual = { ...pAtual, conteudo_html: copia.innerHTML, atualizado_em: agora(), _pendente: true };
+  dbGravar('sermoes', pAtual).then(sincronizar);
+}
+$('#conteudo').addEventListener('click', e => {
+  if (!$('#pulpito').classList.contains('marcando')) return;
+  const sel = getSelection();
+  if (sel && !sel.isCollapsed) return;                     // está selecionando à mão
+  if (ferramenta === 'texto') return;
+  if (ferramenta === 'nota') return tocarNota(e);
+  if (e.target.closest('.gerado, span.nota')) return;
+  const ja = e.target.closest(FERRAMENTAS[ferramenta].seletor);
+  if (ja && $('#conteudo').contains(ja)){ apagarDestaque(ja); salvarRealces(); return; }
+  const r = fraseNoPonto(e.clientX, e.clientY);
+  if (!r) return;
+  // se a frase inteira já tem este destaque, o toque tira (mesmo fora das letras)
+  const sel_ = FERRAMENTAS[ferramenta].seletor;
+  const nos = nosDeTexto($('#conteudo')).filter(n => r.intersectsNode(n) && n.nodeValue.trim()
+    && !(n === r.startContainer && r.startOffset >= n.nodeValue.length) && !(n === r.endContainer && r.endOffset === 0));
+  const donos = nos.map(n => n.parentElement.closest(sel_));
+  if (nos.length && donos.every(Boolean)){ [...new Set(donos)].forEach(el => el.isConnected && apagarDestaque(el)); salvarRealces(); return; }
+  if (destacar(r)) salvarRealces();
+});
+$('#mk-selecao').addEventListener('click', () => {
+  const sel = getSelection();
+  if (!sel || sel.isCollapsed || !$('#conteudo').contains(sel.anchorNode)) return aviso('Primeiro selecione um trecho do sermão.');
+  if (destacar(sel.getRangeAt(0))){ sel.removeAllRanges(); salvarRealces(); }
+});
+
+/* ===================== NOTAS DE PÚLPITO ===================== */
+function renderNotas(){
+  const c = $('#conteudo');
+  c.querySelectorAll('.gerado').forEach(x => x.remove());
+  fecharBalao();
+  if (cfg.notas !== 'visivel') return;
+  const porBloco = new Map();
+  c.querySelectorAll('span.nota').forEach(n => {
+    const b = n.closest(BLOCOS) || n.parentElement;
+    if (!porBloco.has(b)) porBloco.set(b, []);
+    porBloco.get(b).push(n.dataset.nota || '');
+  });
+  porBloco.forEach((textos, b) => {
+    textos.filter(Boolean).reverse().forEach(t => {
+      const d = document.createElement('div');
+      d.className = 'nota-linha gerado'; d.textContent = '📌 ' + t;
+      if (b.matches('li,td,th')) b.appendChild(d); else b.insertAdjacentElement('afterend', d);
+    });
+  });
+}
+function fecharBalao(){ $('#balao').classList.add('oculto'); }
+function abrirBalao(n){
+  const bl = $('#balao'), r = n.getBoundingClientRect();
+  bl.textContent = n.dataset.nota || '';
+  bl.classList.remove('oculto');
+  const w = bl.offsetWidth, h = bl.offsetHeight;
+  let x = Math.min(Math.max(12, r.left - w / 2), innerWidth - w - 12);
+  let y = r.bottom + 8; if (y + h > innerHeight - 12) y = r.top - h - 8;
+  bl.style.left = x + 'px'; bl.style.top = y + 'px';
+}
+// fora do modo marcar: toque no 📌 abre/fecha o balão
+$('#conteudo').addEventListener('click', e => {
+  if ($('#pulpito').classList.contains('marcando')) return;
+  const n = e.target.closest('span.nota');
+  if (!n) return;
+  e.stopPropagation();
+  if (!$('#balao').classList.contains('oculto') && $('#balao')._de === n) return fecharBalao();
+  $('#balao')._de = n; abrirBalao(n);
+});
+document.addEventListener('click', e => { if (!e.target.closest('#balao') && !e.target.closest('span.nota')) fecharBalao(); });
+$('#leitura').addEventListener('scroll', fecharBalao, { passive: true });
+
+function editarNota(textoAtual, aoSalvar, aoApagar){
+  abrirModal(`
+    <h2>${aoApagar ? 'Editar nota' : 'Nova nota de púlpito'}</h2>
+    <div class="sub">Só você vê. Ex.: “contar a ilustração do pescador”, “chamar o louvor”.</div>
+    <textarea id="nota-txt" placeholder="Escreva o lembrete…">${esc(textoAtual || '')}</textarea>
+    <div class="acoes">
+      <button class="btn" id="nota-cancelar">Cancelar</button>
+      ${aoApagar ? '<button class="btn perigo" id="nota-apagar">Apagar nota</button>' : ''}
+      <button class="btn prim" id="nota-salvar">Salvar nota</button>
+    </div>`);
+  const t = $('#nota-txt'); setTimeout(() => { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 50);
+  $('#nota-cancelar').onclick = fecharModal;
+  $('#nota-salvar').onclick = () => { const v = t.value.trim(); if (!v) return aviso('Escreva o lembrete ou cancele.'); fecharModal(); aoSalvar(v); };
+  if (aoApagar) $('#nota-apagar').onclick = () => { fecharModal(); aoApagar(); };
+}
+function tocarNota(e){
+  // tocou num 📌 ou na linha da nota: editar
+  let n = e.target.closest('span.nota');
+  if (!n){
+    const linha = e.target.closest('.nota-linha');
+    if (linha){
+      const b = linha.matches('li > .nota-linha') ? linha.parentElement : linha.previousElementSibling;
+      n = b && b.querySelector('span.nota');
+    }
+  }
+  // tocou numa frase que já tem 📌: editar essa
+  const r = n ? null : fraseNoPonto(e.clientX, e.clientY);
+  if (!n && r){
+    // posição (em letras) de cada 📌 dentro do parágrafo, comparada com o início/fim da frase
+    const textos = nosDeTexto(r._bloco);
+    n = [...r._bloco.querySelectorAll('span.nota')].find(x => {
+      const off = textos.filter(t => t.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING).reduce((s, t) => s + t.nodeValue.length, 0);
+      return off >= r._ini && off <= r._fim + 2;
+    });
+  }
+  if (n){
+    const alvo = n;
+    return editarNota(alvo.dataset.nota,
+      v => { alvo.dataset.nota = v; renderNotas(); salvarRealces(); },
+      () => { alvo.remove(); renderNotas(); salvarRealces(); aviso('Nota apagada'); });
+  }
+  if (!r) return;
+  editarNota('', v => {
+    const marca = document.createElement('span');
+    marca.className = 'nota'; marca.dataset.nota = v;
+    const fim = r.cloneRange(); fim.collapse(false); fim.insertNode(marca);
+    renderNotas(); salvarRealces(); aviso('Nota salva');
+  });
+}
+
+/* ===================== HORA E CRONÔMETRO ===================== */
+const ICONE_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const ICONE_PAUSA = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+let cron = lerLS(K('cron'), { inicio: null, acumulado: 0 });
+const decorrido = () => cron.acumulado + (cron.inicio ? Date.now() - cron.inicio : 0);
+function fmtTempo(ms){
+  const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(s).padStart(2, '0');
+}
+// sessão de pregação: tempo gasto em cada tópico
+let sessao = lerLS(K('sessao'), null);   // { sermaoId, titulo, culto, tempos:{idx:ms}, nomes:{idx:nome} }
+let ultimoTick = Date.now(), contaGravar = 0;
+function contarTopico(){
+  const agoraMs = Date.now(), dt = agoraMs - ultimoTick; ultimoTick = agoraMs;
+  if (!cron.inicio || !sessao || !pAtual || pAtual.id !== sessao.sermaoId || !$('#pulpito').classList.contains('ativa')) return;
+  const i = topicos._atual ?? -1, k = String(i);
+  sessao.tempos[k] = (sessao.tempos[k] || 0) + dt;
+  if (!sessao.nomes[k]) sessao.nomes[k] = i < 0 ? 'Abertura' : topicos[i].textContent.trim();
+  if (++contaGravar % 8 === 0) gravarLS(K('sessao'), sessao);
+}
+function tick(){
+  contarTopico();
+  const d = new Date();
+  $('#hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const ms = decorrido(), min = ms / 60000;
+  $('#cron-valor').textContent = fmtTempo(ms);
+  const cor = min < 30 ? 'azul' : min < 40 ? 'amarelo' : min < 50 ? 'laranja' : 'vermelho';
+  const el = $('#cron');
+  el.className = 'relogio ' + cor + (cron.inicio ? '' : ' parado');
+  const ic = cron.inicio ? ICONE_PAUSA : ICONE_PLAY;
+  if ($('#cron-icone')._ic !== ic){ $('#cron-icone').innerHTML = ic; $('#cron-icone')._ic = ic; }
+}
+setInterval(tick, 250); tick();
+function alternarCron(){
+  if (cron.inicio){ cron.acumulado += Date.now() - cron.inicio; cron.inicio = null; aviso('Cronômetro pausado'); }
+  else {
+    cron.inicio = Date.now(); ultimoTick = Date.now();
+    if (!cron.acumulado){
+      aviso('Cronômetro iniciado');
+      if (pAtual && $('#pulpito').classList.contains('ativa')) sessao = { sermaoId: pAtual.id, titulo: pAtual.titulo, culto: pAtual.culto || '', tempos: {}, nomes: {} };
+    }
+    gravarLS(K('sessao'), sessao);
+  }
+  gravarLS(K('cron'), cron); tick();
+}
+function zerarCron(msg = 'Cronômetro zerado'){ cron = { inicio: null, acumulado: 0 }; sessao = null; gravarLS(K('cron'), cron); gravarLS(K('sessao'), null); tick(); aviso(msg); }
+// toque = iniciar/pausar · segurar 1 segundo = zerar
+(() => {
+  const el = $('#cron'); let t, segurou = false;
+  const ini = () => { segurou = false; t = setTimeout(() => { segurou = true; if (decorrido() > 0) encerrar(); }, 900); };
+  const fim = () => clearTimeout(t);
+  el.addEventListener('pointerdown', ini); el.addEventListener('pointerup', fim); el.addEventListener('pointerleave', fim); el.addEventListener('pointercancel', fim);
+  el.addEventListener('click', () => { if (!segurou) alternarCron(); segurou = false; });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+})();
+$('#cron-zerar').addEventListener('click', () => { abrirPainel(false); if (decorrido() > 0) encerrar(); else aviso('O cronômetro já está zerado'); });
+
+/* ===================== ENCERRAR PREGAÇÃO / HISTÓRICO ===================== */
+function fmtDur(ms){
+  const t = Math.round(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sg = t % 60;
+  if (h) return `${h}h ${String(m).padStart(2, '0')}min`;
+  if (m) return `${m} min${sg ? ' ' + String(sg).padStart(2, '0') + ' s' : ''}`;
+  return `${sg} s`;
+}
+function hojeISO(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function abrirModal(html){ $('#modal-caixa').innerHTML = html; $('#modal').classList.remove('oculto'); }
+function fecharModal(){ $('#modal').classList.add('oculto'); $('#modal-caixa').innerHTML = ''; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') fecharModal(); });
+
+function htmlBarras(topicosLista, total){
+  const max = Math.max(...topicosLista.map(t => t.seg), 1);
+  return '<div class="barras">' + topicosLista.map(t => `
+    <div class="barra-t"><span class="nome">${esc(t.titulo)}</span><span class="t">${fmtDur(t.seg * 1000)}</span>
+    <span class="trilho"><i style="width:${Math.max(2, Math.round(t.seg / max * 100))}%"></i></span></div>`).join('') + '</div>';
+}
+function topicosDaSessao(){
+  if (!sessao) return [];
+  return Object.keys(sessao.tempos).map(Number).sort((a, b) => a - b)
+    .map(i => ({ titulo: sessao.nomes[i] || (i < 0 ? 'Abertura' : 'Tópico ' + (i + 1)), seg: Math.round(sessao.tempos[i] / 1000) }))
+    .filter(t => t.seg >= 1);
+}
+async function encerrar(){
+  // pausa para o tempo não continuar correndo enquanto decide
+  if (cron.inicio){ contarTopico(); cron.acumulado += Date.now() - cron.inicio; cron.inicio = null; gravarLS(K('cron'), cron); tick(); }
+  gravarLS(K('sessao'), sessao);
+  const total = decorrido();
+  if (!sessao || total < 60000){
+    if (confirm('Zerar o cronômetro?')) zerarCron();
+    return;
+  }
+  const tops = topicosDaSessao();
+  const hist = (await dbTodos('pregacoes')).filter(h => !h.excluido);
+  const locais = [...new Set(hist.map(h => h.local).filter(Boolean))];
+  const ultimoLocal = lerLS(K('local'), '');
+  abrirModal(`
+    <h2>Encerrar pregação</h2>
+    <div class="sub">${esc(sessao.titulo)}</div>
+    <div class="total">${fmtTempo(total)}</div>
+    ${tops.length ? '<label class="rot">Tempo por tópico</label>' + htmlBarras(tops, total) : ''}
+    <div class="campos">
+      <div><label class="rot">Data</label><input id="h-data" type="date" value="${hojeISO()}"></div>
+      <div><label class="rot">Culto</label><input id="h-culto" list="cultos" value="${esc(sessao.culto)}"></div>
+      <div class="largo"><label class="rot">Local / congregação</label><input id="h-local" list="h-locais" value="${esc(ultimoLocal)}" placeholder="Ex.: Igreja Vidas — sede">
+        <datalist id="h-locais">${locais.map(l => `<option value="${esc(l)}">`).join('')}</datalist></div>
+      <div class="largo"><label class="rot">Observação (opcional)</label><input id="h-obs" placeholder="Ex.: apelo com 3 decisões"></div>
+    </div>
+    <div class="acoes">
+      <button class="btn" id="h-continuar">Continuar pregando</button>
+      <button class="btn perigo" id="h-descartar">Zerar sem salvar</button>
+      <button class="btn prim" id="h-salvar">Salvar no histórico</button>
+    </div>`);
+  $('#h-continuar').onclick = () => { fecharModal(); alternarCron(); };
+  $('#h-descartar').onclick = () => { if (confirm('Zerar sem guardar esta pregação no histórico?')){ fecharModal(); zerarCron(); } };
+  $('#h-salvar').onclick = async () => {
+    const local = $('#h-local').value.trim();
+    gravarLS(K('local'), local);
+    const reg = { id: uid(), sermao_id: sessao.sermaoId, titulo: sessao.titulo, data: $('#h-data').value || hojeISO(), culto: $('#h-culto').value.trim(), local,
+      duracao_seg: Math.round(total / 1000), topicos: tops, obs: $('#h-obs').value.trim(), excluido: false, criado_em: agora(), atualizado_em: agora(), _pendente: true };
+    await dbGravar('pregacoes', reg);
+    fecharModal(); zerarCron('Pregação salva no histórico'); sincronizar();
+  };
+}
+
+async function abrirHistorico(sermaoId){
+  let lista = (await dbTodos('pregacoes')).filter(h => !h.excluido && (!sermaoId || h.sermao_id === sermaoId));
+  lista.sort((a, b) => (b.data || '').localeCompare(a.data || '') || (b.criado_em || '').localeCompare(a.criado_em || ''));
+  const titulo = sermaoId ? (lista[0] ? lista[0].titulo : 'Sermão') : 'Histórico de pregações';
+  const media = lista.length ? lista.reduce((s, h) => s + h.duracao_seg, 0) / lista.length : 0;
+  abrirModal(`
+    <h2>${sermaoId ? 'Histórico do sermão' : 'Histórico de pregações'}<button class="icone" id="h-fechar" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+    <div class="sub">${sermaoId ? esc(titulo) + ' · ' : ''}${lista.length} pregação(ões)${lista.length ? ' · duração média ' + fmtDur(media * 1000) : ''}</div>
+    ${lista.length ? lista.map(h => `
+      <div class="hist-item" data-id="${h.id}">
+        <div class="hist-cab"><div>
+          ${sermaoId ? '' : `<div class="hist-tit">${esc(h.titulo)}</div>`}
+          <div class="hist-meta">${fmtData(h.data)}${h.culto ? ' · ' + esc(h.culto) : ''}${h.local ? ' · ' + esc(h.local) : ''}</div>
+        </div><b>${fmtDur(h.duracao_seg * 1000)}</b></div>
+        <div class="hist-det">
+          ${(h.topicos || []).length ? htmlBarras(h.topicos, h.duracao_seg) : ''}
+          ${h.obs ? `<p class="dica" style="margin-bottom:10px">${esc(h.obs)}</p>` : ''}
+          <button class="btn perigo" data-apagar="${h.id}">Apagar do histórico</button>
+        </div>
+      </div>`).join('') : '<p class="dica">Nenhuma pregação registrada ainda. Ao encerrar o cronômetro, o app pergunta se você quer salvar.</p>'}`);
+  $('#h-fechar').onclick = fecharModal;
+  $('#modal-caixa').onclick = async e => {
+    const ap = e.target.closest('[data-apagar]');
+    if (ap){
+      if (!confirm('Apagar este registro do histórico?')) return;
+      const h = await dbPegar('pregacoes', ap.dataset.apagar);
+      await dbGravar('pregacoes', { ...h, excluido: true, atualizado_em: agora(), _pendente: true });
+      sincronizar(); abrirHistorico(sermaoId); desenharLista(); return;
+    }
+    const cab_ = e.target.closest('.hist-cab'); if (cab_) cab_.parentElement.classList.toggle('aberto');
+  };
+}
+$('#btn-historico').addEventListener('click', () => abrirHistorico(null));
+
+/* ===================== CONTROLE DE APRESENTAÇÃO / TECLADO ===================== */
+function topicoAnterior(){
+  const i = topicos._atual ?? -1;
+  if (i < 0) return $('#leitura').scrollTo({ top: 0, behavior: 'smooth' });
+  const h = topicos[i], L = $('#leitura');
+  // se já passou bastante do início do tópico atual, volta para o início dele
+  if (h.getBoundingClientRect().top < L.getBoundingClientRect().top - 40) return irTopico(i);
+  if (i === 0) return L.scrollTo({ top: 0, behavior: 'smooth' });
+  irTopico(i - 1);
+}
+function topicoSeguinte(){
+  const i = topicos._atual ?? -1;
+  if (topicos[i + 1]) irTopico(i + 1); else aviso('Último tópico');
+}
+// teclas que os controles costumam mandar no botão de "tela preta" / quadrado
+const TECLAS_CRON = ['b', 'B', '.', 'w', 'W', ',', 'Escape', 'F5', 'Tab', 'Enter', 'MediaPlayPause', 'AudioVolumeMute'];
+let teclaAprendida = lerLS('pv.tecla', null);   // { key, code }
+let ouvindoTecla = false, ultimoCron = 0;
+const MODIFICADORAS = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn'];
+function infoTecla(ult){
+  $('#tecla-info').textContent = (teclaAprendida ? `Botão do cronômetro aprendido: “${teclaAprendida.key}”. ` : '') + (ult ? `Última tecla recebida: “${ult}”.` : '');
+}
+infoTecla();
+$('#ensinar-botao').addEventListener('click', () => {
+  ouvindoTecla = true; $('#ensinar-botao').classList.add('ouvindo');
+  $('#ensinar-botao').textContent = 'Aperte agora o botão do quadrado…';
+});
+document.addEventListener('keydown', e => {
+  if (MODIFICADORAS.includes(e.key)) return;
+  if (ouvindoTecla){
+    e.preventDefault(); ouvindoTecla = false;
+    teclaAprendida = { key: e.key, code: e.code }; gravarLS('pv.tecla', teclaAprendida);
+    $('#ensinar-botao').classList.remove('ouvindo'); $('#ensinar-botao').textContent = 'Ensinar o botão do cronômetro';
+    infoTecla(); aviso('Pronto! Esse botão agora inicia/pausa o cronômetro.');
+    return;
+  }
+  if (!$('#pulpito').classList.contains('ativa') || !$('#modal').classList.contains('oculto')) return;
+  if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
+  infoTecla(e.key);
+  const k = e.key;
+  if (!$('#caixa-texto').classList.contains('oculto')){ fecharTextoBiblico(); if (k === 'Escape') return; }
+  const ehCron = teclaAprendida ? (k === teclaAprendida.key || e.code === teclaAprendida.code) : TECLAS_CRON.includes(k);
+  if (ehCron){
+    e.preventDefault();
+    if (Date.now() - ultimoCron > 600){ ultimoCron = Date.now(); alternarCron(); }   // evita duplo disparo
+  }
+  else if (['PageDown', 'ArrowRight', 'ArrowDown'].includes(k)){ e.preventDefault(); topicoSeguinte(); }
+  else if (['PageUp', 'ArrowLeft', 'ArrowUp'].includes(k)){ e.preventDefault(); topicoAnterior(); }
+});
+
+/* ===================== MANTER A TELA ACESA ===================== */
+let trava = null;
+async function segurarTela(){
+  try {
+    if ('wakeLock' in navigator){
+      trava = await navigator.wakeLock.request('screen');
+      $('#tela-status').textContent = 'A tela fica acesa enquanto o sermão estiver aberto.';
+      trava.addEventListener('release', () => { trava = null; });
+    } else $('#tela-status').textContent = 'Este aparelho não permite manter a tela acesa pelo app. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca” antes de pregar.';
+  } catch { $('#tela-status').textContent = 'Não consegui manter a tela acesa. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca”.'; }
+}
+function liberarTela(){ if (trava){ trava.release().catch(() => {}); trava = null; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && $('#pulpito').classList.contains('ativa') && !trava) segurarTela(); });
+
+/* ===================== INÍCIO ===================== */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+async function iniciar(){
+  const msg = (() => { try { const m = sessionStorage.getItem('pv.msg'); sessionStorage.removeItem('pv.msg'); return m; } catch { return null; } })();
+  if (!USUARIO){ pintarAba(); irPara('entrar'); if (msg) $('#ac-erro').textContent = msg; verificarConta(); return; }
+  if (USUARIO.situacao === 'aprovado') await entrarNoApp();
+  else mostrarAguardando();
+  verificarConta();
+}
+window.addEventListener('online', verificarConta);
+iniciar();
+</script>
+</body>
+</html>
