@@ -170,6 +170,8 @@ exato: {
   'A tela fica acesa enquanto o sermão estiver aberto.': 'The screen stays on while the sermon is open.',
   'Este aparelho não permite manter a tela acesa pelo app. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca” antes de pregar.': 'This device does not let the app keep the screen on. In Settings › Display & Brightness › Auto-Lock, choose “Never” before preaching.',
   'Não consegui manter a tela acesa. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca”.': 'Could not keep the screen on. In Settings › Display & Brightness › Auto-Lock, choose “Never”.',
+  'Ajuda': 'Help', 'Ajuda: como usar o app': 'Help: how to use the app', '✓ Pronto para pregar sem internet': '✓ Ready to preach offline',
+  'Sem internet no iPad · a projeção volta quando a conexão voltar': 'Offline on the iPad · projection resumes when the connection returns',
   'Sermão': 'Sermon', 'Textos bíblicos': 'Bible passages', 'Pregador Visual · página': 'Pregador Visual · page', '· Texto:': '· Passage:'
 },
 // frases com números ou nomes no meio (vale também para pedaços de frase)
@@ -220,6 +222,8 @@ padroes: [
   [/^Botão do cronômetro aprendido: “(.*)”\. ?/, 'Timer button learned: “$1”. '],
   [/Última tecla recebida: “(.*)”\.$/, 'Last key received: “$1”.'],
   [/^(\d+) slide\(s\)$/, '$1 slide(s)'],
+  [/^⚠ (\d+) slide\(s\) ainda não estão neste aparelho\. Abra o app com internet antes do culto\.$/, '⚠ $1 slide(s) are not on this device yet. Open the app online before the service.'],
+  [/^Guardando slides no aparelho (\d+)\/(\d+)…$/, 'Saving slides to the device $1/$2…'],
   [/^(gratuito|pago|cortesia)( · administrador)?$/, (m, pl, adm) => ({ gratuito: 'free', pago: 'paid', cortesia: 'courtesy' }[pl]) + (adm ? ' · administrator' : '')]
 ]
 };
