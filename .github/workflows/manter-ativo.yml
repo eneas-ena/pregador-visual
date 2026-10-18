@@ -1,0 +1,23 @@
+# Pregador Visual — mantém o projeto gratuito do Supabase acordado
+# (o plano gratuito pausa o projeto depois de 7 dias sem uso).
+# Roda sozinho a cada 3 dias. Também dá para rodar na mão: aba Actions › "Manter o Pregador Visual ativo" › Run workflow.
+name: Manter o Pregador Visual ativo
+
+on:
+  schedule:
+    - cron: '23 11 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  sinal-de-vida:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar o banco do Pregador Visual
+        run: |
+          curl -fsS -X POST "https://xabuejhnuolcchgrdvvf.supabase.co/rest/v1/rpc/ping" \
+            -H "apikey: sb_publishable_9__f7P-FeGFv1oAIKEtJ1Q_43xrWDRe" \
+            -H "Content-Profile: pregador" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo ""
+          echo "Pregador Visual respondeu. Projeto ativo."
