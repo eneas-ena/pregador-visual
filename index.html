@@ -403,6 +403,10 @@ li > .nota-linha{margin:.3em 0}
 .adm-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .btn.verde{background:#3CB371;border-color:#3CB371;color:#fff}
 .sl-codigo{width:100%;font-size:12.5px;color:var(--txt2)}
+.menu-opcoes{display:flex;flex-direction:column;gap:10px}
+.menu-opcoes .btn{flex-direction:column;align-items:flex-start;white-space:normal;text-align:left;gap:3px;padding:12px 14px;width:100%}
+.menu-opcoes .btn span{font-weight:400;font-size:13.5px;color:var(--txt2);line-height:1.4}
+.menu-opcoes .btn.prim span{color:#0F1B33}
 .sl-codigo b{color:var(--ouro);letter-spacing:.14em}
 </style>
 </head>
@@ -426,6 +430,18 @@ li > .nota-linha{margin:.3em 0}
     <div class="acesso-erro" id="ac-erro"></div>
     <button class="btn prim" type="submit" id="ac-enviar">Entrar</button>
     <button class="acesso-link" type="button" id="ac-esqueci">Esqueci minha senha</button>
+  </form>
+</section>
+
+<!-- ===================== TELA: SENHA NOVA (link do e-mail) ===================== -->
+<section id="nova-senha" class="tela acesso">
+  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <form class="acesso-caixa" id="form-nova-senha">
+    <div class="logo"><img src="icon-192.png" alt=""><h1>Senha nova</h1><p>Conta: <b id="ns-email">…</b></p></div>
+    <div><label class="rot" for="ns-senha">Senha nova</label><input id="ns-senha" type="password" autocomplete="new-password" minlength="6" required></div>
+    <div><label class="rot" for="ns-senha2">Repita a senha nova</label><input id="ns-senha2" type="password" autocomplete="new-password" minlength="6" required></div>
+    <div class="acesso-erro" id="ns-erro"></div>
+    <button class="btn prim" type="submit" id="ns-salvar">Salvar a senha nova</button>
   </form>
 </section>
 
@@ -666,6 +682,7 @@ li > .nota-linha{margin:.3em 0}
   <p class="versao" data-versao></p>
 </aside>
 
+<input type="file" id="arq-restaurar" accept="application/json,.json" class="oculto">
 <div id="modal" class="modal-fundo oculto"><div class="modal" id="modal-caixa"></div></div>
 <div id="balao" class="oculto"></div>
 <div id="aviso"></div>
@@ -674,7 +691,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.1.0';
+const VERSAO = '2.2.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -921,6 +938,7 @@ async function desenharLista(){
         </button>
         <button class="btn" data-editar="${s.id}">Editar</button>
         ${hist[s.id] ? `<button class="btn" data-hist="${s.id}">Histórico</button>` : ''}
+        <button class="btn" data-mais="${s.id}" title="Salvar cópia ou arquivar" style="margin-left:auto">⋯</button>
       </div>
     </div>`).join('');
 }
@@ -929,6 +947,7 @@ $('#lista').addEventListener('click', e => {
   const p = e.target.closest('[data-pregar]'); if (p) return abrirPulpito(p.dataset.pregar);
   const ed = e.target.closest('[data-editar]'); if (ed) return abrirEditor(ed.dataset.editar);
   const hi = e.target.closest('[data-hist]'); if (hi) return abrirHistorico(hi.dataset.hist);
+  const ma = e.target.closest('[data-mais]'); if (ma) return menuSermao(ma.dataset.mais);
 });
 
 /* ===================== EDITOR ===================== */
@@ -1153,8 +1172,8 @@ $('#ed-salvar').addEventListener('click', async () => {
   irPara('inicio'); desenharLista(); sincronizar();
 });
 $('#ed-excluir').addEventListener('click', async () => {
-  if (!confirm(`Excluir o sermão “${edAtual.titulo}”?`)) return;
-  await dbGravar('sermoes', { ...edAtual, excluido: true, atualizado_em: agora(), _pendente: true });
+  if (!confirm(`Excluir o sermão “${edAtual.titulo}”?\n\nDica: para guardar uma cópia antes, use o botão ⋯ no cartão do sermão (Salvar uma cópia ou Arquivar).`)) return;
+  await removerSermao(edAtual);
   aviso('Sermão excluído'); irPara('inicio'); desenharLista(); sincronizar();
 });
 $('#ed-voltar').addEventListener('click', () => { irPara('inicio'); desenharLista(); });
@@ -1266,7 +1285,7 @@ $('#ed-sl-remover').addEventListener('click', () => { if (confirm('Remover os sl
 let _sb = null, enviandoSlides = false;
 function sb(){
   if (!_sb && window.supabase) _sb = window.supabase.createClient(SB_URL, SB_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth', detectSessionInUrl: false }
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'pv-auth', detectSessionInUrl: true }
   });
   return _sb;
 }
@@ -1408,10 +1427,7 @@ $('#form-entrar').addEventListener('submit', async e => {
   } catch (e2){ console.error(e2); erro.textContent = traduzErro(e2); }
   finally { botao.disabled = false; botao.textContent = txt; }
 });
-$('#ac-esqueci').addEventListener('click', () => abrirModal(`
-  <h2>Esqueci minha senha</h2>
-  <p class="sub" style="font-size:16px;line-height:1.55">Por enquanto, a troca de senha é feita pelo administrador do Pregador Visual. Fale com ele e informe o e-mail da sua conta.</p>
-  <div class="acoes"><button class="btn prim" onclick="fecharModal()">Entendi</button></div>`));
+$('#ac-esqueci').addEventListener('click', () => pedirRecuperacao());
 
 $('#ag-verificar').addEventListener('click', async () => {
   if (!navigator.onLine) return aviso('Sem internet.');
@@ -1452,8 +1468,19 @@ $('#btn-conta').addEventListener('click', async () => {
       <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(urlProjetor() + '?codigo=' + u.codigo)}</b></div><button class="btn" data-copiar="${esc(urlProjetor() + '?codigo=' + u.codigo)}">Copiar</button></div>
       <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>` : '<p class="dica">—</p>'}
     </div>
+    <div class="conta-linha" style="display:block"><span>Backup e restauração</span>
+      <p class="dica" style="margin:6px 0 10px">${lerLS(K('ultimoBackup'), null) ? 'Último backup neste aparelho: ' + new Date(lerLS(K('ultimoBackup'))).toLocaleDateString('pt-BR') : 'Nenhum backup feito neste aparelho ainda.'}</p>
+      <div class="menu-opcoes">
+        <button class="btn" id="bk-completo"><b>💾 Backup completo (com slides)</b><span>Todos os sermões com marcações, notas, textos bíblicos, histórico e slides. Arquivo maior.</span></button>
+        <button class="btn" id="bk-leve"><b>📝 Backup sem os slides</b><span>Tudo, menos as imagens dos slides. Arquivo pequeno.</span></button>
+        <button class="btn" id="bk-restaurar"><b>⤴ Restaurar backup ou sermão arquivado</b><span>Escolha um arquivo .json salvo pelo Pregador Visual.</span></button>
+      </div>
+    </div>
     <div class="acoes" style="margin-top:16px"><button class="btn perigo" id="conta-sair">Sair da conta</button><button class="btn prim" onclick="fecharModal()">Fechar</button></div>`);
   $('#conta-sair').onclick = () => { fecharModal(); sairDaConta(); };
+  $('#bk-completo').onclick = () => { fecharModal(); fazerBackup(true); };
+  $('#bk-leve').onclick = () => { fecharModal(); fazerBackup(false); };
+  $('#bk-restaurar').onclick = () => { fecharModal(); $('#arq-restaurar').click(); };
   $$('#modal-caixa [data-copiar]').forEach(b => b.onclick = async () => {
     if (await copiar(b.dataset.copiar)){ b.textContent = '✓ Copiado'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('ok'); }, 2000); }
     else aviso('Não consegui copiar. Toque e segure o texto para copiar.');
@@ -1478,6 +1505,247 @@ async function copiar(txt){
     const ok = document.execCommand('copy'); t.remove(); return ok;
   } catch { return false; }
 }
+
+/* ===================== EXPORTAR · ARQUIVAR · BACKUP · RESTAURAR ===================== */
+// Arquivo .json com tudo: texto com marcações e notas, textos bíblicos, histórico e (se quiser) os slides.
+const ehIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const blobParaDataUrl = b => new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => erro(r.error); r.readAsDataURL(b); });
+const dataUrlParaBlob = async u => (await fetch(u)).blob();
+const nomeArquivo = t => String(t || 'sermao').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'sermao';
+const hoje = () => new Date().toISOString().slice(0, 10);
+const semInterno = o => { const c = { ...o }; delete c._pendente; delete c.user_id; return c; };
+
+// mostra "Arquivo pronto" e entrega quando o pastor tocar (o iPad só abre o "Salvar" logo após um toque)
+function entregarArquivo(partes, nome){
+  const arq = new File(partes, nome, { type: 'application/json' });
+  const tam = arq.size > 1048576 ? (arq.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(arq.size / 1024)) + ' KB';
+  return new Promise(fim => {
+    abrirModal(`
+      <h2>Arquivo pronto</h2>
+      <p class="sub" style="word-break:break-all">${esc(nome)} · ${tam}</p>
+      <p style="line-height:1.55;margin-bottom:14px">${ehIOS ? 'Toque em <b>Salvar o arquivo</b> e escolha <b>“Salvar em Arquivos”</b> (iCloud Drive ou No meu iPad).' : 'Toque em <b>Salvar o arquivo</b>. Ele vai para a pasta de Downloads.'}<br>Guarde-o em lugar seguro.</p>
+      <div class="acoes"><button class="btn" id="ea-cancelar">Cancelar</button><button class="btn prim" id="ea-salvar">Salvar o arquivo</button></div>`);
+    $('#ea-cancelar').onclick = () => { fecharModal(); fim(false); };
+    $('#ea-salvar').onclick = async () => {
+      if (ehIOS && navigator.canShare && navigator.canShare({ files: [arq] })){
+        try { await navigator.share({ files: [arq], title: nome }); fecharModal(); return fim(true); }
+        catch (e){ if (e && e.name === 'AbortError') return; }   // fechou a janela: deixa tentar de novo
+      }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(arq); a.download = nome;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      fecharModal(); fim(true);
+    };
+  });
+}
+// slides do sermão como imagens embutidas no arquivo (do aparelho ou, se não tiver, da nuvem)
+async function slidesParaArquivo(s, progresso){
+  const lista = s.slides || []; if (!lista.length) return { slides: [], faltou: 0 };
+  const locais = Object.fromEntries((await dbSlidesDe(s.id)).map(r => [r.n, r]));
+  const out = []; let faltou = 0;
+  for (const x of lista){
+    if (progresso) progresso(x.n, lista.length);
+    let blob = locais[x.n] && locais[x.n].full;
+    if (!blob && navigator.onLine){ try { const r = await fetch(urlSlide(x.path)); if (r.ok) blob = await r.blob(); } catch {} }
+    if (blob) out.push({ n: x.n, jpg: await blobParaDataUrl(blob) }); else faltou++;
+  }
+  return { slides: out, faltou };
+}
+async function pacoteDoSermao(s, comSlides, progresso){
+  const refs = new Set((s.textos || []).map(t => chaveRef(t.ref)));
+  const textos = (await dbTodos('textos')).filter(t => refs.has(t.chave)).map(semInterno);
+  const pregacoes = (await dbTodos('pregacoes')).filter(h => h.sermao_id === s.id && !h.excluido).map(semInterno);
+  const sl = comSlides ? await slidesParaArquivo(s, progresso) : { slides: [], faltou: 0 };
+  return { item: { sermao: semInterno(s), slides: sl.slides, pregacoes }, textos, faltou: sl.faltou };
+}
+const cabecalho = tipo => ({ app: 'Pregador Visual', tipo, versao_app: VERSAO, formato: 1, exportado_em: agora(), pastor: USUARIO ? (USUARIO.nome || USUARIO.email) : '' });
+
+async function exportarSermao(id, depois){
+  const s = await dbPegar('sermoes', id); if (!s) return;
+  const temSlides = (s.slides || []).length;
+  aviso('Preparando o arquivo…', 8000);
+  const p = await pacoteDoSermao(s, true, (i, n) => aviso(`Preparando slide ${i} de ${n}…`, 8000));
+  if (p.faltou && !confirm(`${p.faltou} de ${temSlides} slide(s) não estão neste aparelho nem foram encontrados na nuvem${navigator.onLine ? '' : ' (sem internet)'}.\n\nSalvar o arquivo sem eles?`)) return false;
+  const dados = { ...cabecalho('sermao'), sermoes: [p.item], textos: p.textos };
+  const ok = await entregarArquivo([JSON.stringify(dados)], `Sermao-${nomeArquivo(s.titulo)}-${s.data_pregacao || hoje()}.json`);
+  if (ok && !depois) aviso('Arquivo do sermão pronto');
+  return ok;
+}
+// tira o sermão do app (e os slides da nuvem): libera espaço. O arquivo salvo traz tudo de volta.
+async function removerSermao(s){
+  const antigos = (s.slides || []).map(x => x.path);
+  if (antigos.length) gravarLS(K('apagarSlides'), [...lerLS(K('apagarSlides'), []), ...antigos]);
+  await dbApagarSlides(s.id);
+  await dbGravar('sermoes', { ...s, excluido: true, slides: [], slides_v: null, atualizado_em: agora(), _pendente: true });
+}
+async function arquivarSermao(id){
+  const s = await dbPegar('sermoes', id); if (!s) return;
+  const ok = await exportarSermao(id, true);
+  if (!ok) return;
+  if (!confirm(`O arquivo de “${s.titulo}” foi entregue.\n\nConfira se ele foi salvo (em Arquivos, Downloads ou onde você escolheu) antes de continuar.\n\nRemover agora o sermão do app e liberar o espaço dos slides?`)) return;
+  await removerSermao(s);
+  aviso('Sermão arquivado. Para trazê-lo de volta: Minha conta › Restaurar.', 5000);
+  desenharLista(); sincronizar();
+}
+function menuSermao(id){
+  dbPegar('sermoes', id).then(s => {
+    if (!s) return;
+    const n = (s.slides || []).length;
+    abrirModal(`
+      <h2>${esc(s.titulo)} <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+      <p class="sub">${n ? n + ' slide(s)' : 'Sem slides'}</p>
+      <div class="menu-opcoes">
+        <button class="btn" id="ms-exportar"><b>💾 Salvar uma cópia no aparelho</b><span>Arquivo com o texto, marcações, notas, textos bíblicos, histórico${n ? ' e slides' : ''}. O sermão continua no app.</span></button>
+        <button class="btn" id="ms-arquivar"><b>📦 Arquivar (salvar e liberar espaço)</b><span>Salva o arquivo e depois tira o sermão do app${n ? ', apagando os slides da nuvem' : ''}. Volta igualzinho em Minha conta › Restaurar.</span></button>
+      </div>`);
+    $('#ms-exportar').onclick = () => { fecharModal(); exportarSermao(id); };
+    $('#ms-arquivar').onclick = () => { fecharModal(); arquivarSermao(id); };
+  });
+}
+
+async function fazerBackup(comSlides){
+  const sermoes = (await dbTodos('sermoes')).filter(s => !s.excluido);
+  if (!sermoes.length) return aviso('Ainda não há sermões para o backup.');
+  const itens = []; let faltou = 0;
+  for (let i = 0; i < sermoes.length; i++){
+    aviso(`Preparando o backup: sermão ${i + 1} de ${sermoes.length}…`, 10000);
+    const p = await pacoteDoSermao(sermoes[i], comSlides);
+    itens.push(p.item); faltou += p.faltou;
+  }
+  const textos = (await dbTodos('textos')).map(semInterno);
+  const soltas = (await dbTodos('pregacoes')).filter(h => !h.excluido && !sermoes.some(s => s.id === h.sermao_id)).map(semInterno);   // histórico de sermões já apagados
+  if (faltou && !confirm(`${faltou} slide(s) não foram encontrados (nem no aparelho, nem na nuvem). Continuar o backup sem eles?`)) return;
+  const dados = { ...cabecalho('backup'), com_slides: comSlides, sermoes: itens, textos, pregacoes_soltas: soltas };
+  const ok = await entregarArquivo([JSON.stringify(dados)], `Backup-Pregador-Visual-${hoje()}${comSlides ? '' : '-sem-slides'}.json`);
+  if (ok){ gravarLS(K('ultimoBackup'), agora()); aviso(`Backup pronto: ${itens.length} sermão(ões)`, 4000); }
+}
+
+const miniatura = async blob => {
+  const img = await createImageBitmap(blob);
+  const tw = 360, th = Math.round(img.height * tw / img.width);
+  const c = document.createElement('canvas'); c.width = tw; c.height = th; c.getContext('2d').drawImage(img, 0, 0, tw, th);
+  img.close && img.close();
+  const t = await paraBlob(c, 0.72); c.width = c.height = 0; return t;
+};
+async function lerArquivoRestauracao(arq){
+  let dados;
+  try { dados = JSON.parse(await arq.text()); } catch { return aviso('Este arquivo não é um backup do Pregador Visual.', 5000); }
+  if (!dados || dados.app !== 'Pregador Visual' || !Array.isArray(dados.sermoes)) return aviso('Este arquivo não é um backup do Pregador Visual.', 5000);
+  const locais = Object.fromEntries((await dbTodos('sermoes')).map(s => [s.id, s]));
+  const existem = dados.sermoes.filter(it => locais[it.sermao.id] && !locais[it.sermao.id].excluido);
+  const nSl = dados.sermoes.reduce((t, it) => t + (it.slides || []).length, 0);
+  const quando = dados.exportado_em ? new Date(dados.exportado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '?';
+  abrirModal(`
+    <h2>${dados.tipo === 'backup' ? 'Restaurar backup' : 'Trazer sermão de volta'} <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+    <p class="sub">Arquivo de ${esc(quando)}${dados.pastor ? ' · ' + esc(dados.pastor) : ''}</p>
+    <p style="line-height:1.55;margin-bottom:12px">${dados.sermoes.length === 1 ? '<b>' + esc(dados.sermoes[0].sermao.titulo) + '</b>' : `<b>${dados.sermoes.length} sermões</b>`}${nSl ? ` · ${nSl} slide(s)` : ''}${(dados.textos || []).length ? ` · ${dados.textos.length} texto(s) bíblico(s)` : ''}.</p>
+    ${existem.length ? `<p class="dica" style="margin-bottom:12px">${existem.length} ${existem.length > 1 ? 'destes sermões já estão' : 'deste(s) sermão(ões) já está'} no app.</p>` : ''}
+    <div class="menu-opcoes">
+      ${existem.length ? `<button class="btn" id="rs-faltam"><b>Acrescentar só o que falta</b><span>Os sermões que já estão no app ficam como estão.</span></button>
+      <button class="btn" id="rs-substituir"><b>Substituir pelo arquivo</b><span>Os que já existem voltam a ficar exatamente como no arquivo.</span></button>
+      <button class="btn" id="rs-copia"><b>Trazer como cópia</b><span>Cria cópias novas, sem mexer nos atuais.</span></button>`
+      : `<button class="btn prim" id="rs-faltam"><b>Restaurar</b></button>`}
+    </div>`);
+  const ir = modo => { fecharModal(); restaurar(dados, modo); };
+  $('#rs-faltam').onclick = () => ir('faltam');
+  if ($('#rs-substituir')) $('#rs-substituir').onclick = () => ir('substituir');
+  if ($('#rs-copia')) $('#rs-copia').onclick = () => ir('copia');
+}
+async function restaurar(dados, modo){
+  const locais = Object.fromEntries((await dbTodos('sermoes')).map(s => [s.id, s]));
+  const histLocal = new Set((await dbTodos('pregacoes')).map(h => h.id));
+  let feitos = 0, pulados = 0, slidesNovos = 0;
+  for (let i = 0; i < dados.sermoes.length; i++){
+    const it = dados.sermoes[i], orig = it.sermao;
+    const atual = locais[orig.id], vivo = atual && !atual.excluido;
+    if (vivo && modo === 'faltam'){ pulados++; continue; }
+    aviso(`Restaurando ${i + 1} de ${dados.sermoes.length}…`, 10000);
+    const copia = vivo && modo === 'copia';
+    const id = copia ? uid() : orig.id;
+    const s = { ...orig, id, titulo: copia ? orig.titulo + ' (cópia)' : orig.titulo, excluido: false, atualizado_em: agora(), _pendente: true };
+    if (!copia && atual) s.criado_em = atual.criado_em || s.criado_em;
+    // slides: troca os antigos pelos do arquivo
+    if (vivo && !copia){
+      const antigos = (atual.slides || []).map(x => x.path);
+      if (antigos.length) gravarLS(K('apagarSlides'), [...lerLS(K('apagarSlides'), []), ...antigos]);
+      await dbApagarSlides(id);
+    }
+    const sl = it.slides || [];
+    if (sl.length){
+      const v = Date.now() + i, recs = [];
+      for (const x of sl){
+        const full = await dataUrlParaBlob(x.jpg);
+        recs.push({ chave: `${id}/${x.n}`, sermao_id: id, n: x.n, full, thumb: await miniatura(full), path: `${USUARIO.id}/${id}/${v}-${x.n}.jpg`, enviado: false });
+      }
+      await dbGravar('slides', recs);
+      s.slides = recs.map(r => ({ n: r.n, path: r.path })); s.slides_v = v; slidesNovos += recs.length;
+    } else { s.slides = []; s.slides_v = null; }
+    await dbGravar('sermoes', s);
+    const hs = (it.pregacoes || []).filter(h => copia || !histLocal.has(h.id)).map(h => ({ ...h, id: copia ? uid() : h.id, sermao_id: id, _pendente: true, atualizado_em: agora() }));
+    if (hs.length) await dbGravar('pregacoes', hs);
+    feitos++;
+  }
+  // textos bíblicos: acrescenta os que faltam na biblioteca
+  const bib = new Set((await dbTodos('textos')).map(t => t.chave));
+  const tx = (dados.textos || []).filter(t => modo === 'substituir' || !bib.has(t.chave)).map(t => ({ ...t, atualizado_em: agora(), _pendente: true }));
+  if (tx.length) await dbGravar('textos', tx);
+  const soltas = (dados.pregacoes_soltas || []).filter(h => !histLocal.has(h.id)).map(h => ({ ...h, _pendente: true, atualizado_em: agora() }));
+  if (soltas.length) await dbGravar('pregacoes', soltas);
+  aviso(`${feitos} sermão(ões) restaurado(s)${pulados ? ` · ${pulados} já estavam no app` : ''}${slidesNovos ? ' · enviando os slides…' : ''}`, 5000);
+  irPara('inicio'); desenharLista(); sincronizar();
+}
+$('#arq-restaurar').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) lerArquivoRestauracao(f); });
+
+/* ===================== RECUPERAR A SENHA ===================== */
+function pedirRecuperacao(){
+  abrirModal(`
+    <h2>Esqueci minha senha <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+    <p class="sub" style="font-size:15px;line-height:1.5">Digite o e-mail da sua conta. Vamos enviar um link para você criar uma senha nova.</p>
+    <input id="rec-email" type="email" inputmode="email" autocapitalize="off" autocomplete="email" value="${esc($('#ac-email').value.trim())}" style="margin-bottom:10px">
+    <p class="acesso-erro" id="rec-erro" style="margin-bottom:10px"></p>
+    <div class="acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn prim" id="rec-enviar">Enviar o link</button></div>`);
+  $('#rec-email').focus();
+  $('#rec-enviar').onclick = async () => {
+    const email = $('#rec-email').value.trim().toLowerCase(), erro = $('#rec-erro'), b = $('#rec-enviar');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return erro.textContent = 'Confira o e-mail digitado.';
+    b.disabled = true; b.textContent = 'Enviando…'; erro.textContent = '';
+    try {
+      const { error } = await sb().auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if (error) throw error;
+      $('#modal-caixa').innerHTML = `<h2>Link enviado</h2><p class="sub" style="font-size:16px;line-height:1.55">Se <b>${esc(email)}</b> tiver conta no Pregador Visual, o e-mail chega em alguns minutos.<br><br>Procure também na caixa de <b>Spam</b> ou <b>Lixo eletrônico</b>. Abra o link <b>neste mesmo aparelho</b>.</p><div class="acoes"><button class="btn prim" onclick="fecharModal()">Entendi</button></div>`;
+    } catch (e){
+      console.error(e);
+      const m = String(e.message || e);
+      erro.textContent = /sending|smtp|email.*(send|provider)/i.test(m) ? 'O envio de e-mails ainda não está configurado. Fale com o administrador.' : traduzErro(e);
+      b.disabled = false; b.textContent = 'Enviar o link';
+    }
+  };
+}
+// voltou pelo link do e-mail: "#access_token=…&type=recovery" (ou um erro, se o link venceu)
+const HASH_INICIAL = location.hash || '';
+const VEIO_RECUPERAR = /type=recovery/.test(HASH_INICIAL);
+const ERRO_LINK = /error_code=|error=/.test(HASH_INICIAL) ? decodeURIComponent((HASH_INICIAL.match(/error_description=([^&]*)/) || [])[1] || '').replace(/\+/g, ' ') : '';
+async function telaNovaSenha(){
+  irPara('nova-senha');
+  const { data } = await comPrazo(sb().auth.getSession(), 15000);
+  if (!data || !data.session){ history.replaceState(null, '', location.pathname); irPara('entrar'); pintarAba(); $('#ac-erro').textContent = 'O link não funcionou. Peça outro em “Esqueci minha senha”.'; return; }
+  $('#ns-email').textContent = data.session.user.email;
+}
+$('#form-nova-senha').addEventListener('submit', async e => {
+  e.preventDefault();
+  const a = $('#ns-senha').value, b = $('#ns-senha2').value, erro = $('#ns-erro'), bt = $('#ns-salvar');
+  if (a.length < 6) return erro.textContent = 'A senha precisa ter pelo menos 6 caracteres.';
+  if (a !== b) return erro.textContent = 'As duas senhas não são iguais.';
+  bt.disabled = true; bt.textContent = 'Salvando…'; erro.textContent = '';
+  try {
+    const { error } = await sb().auth.updateUser({ password: a });
+    if (error) throw error;
+    const { data } = await sb().auth.getSession();
+    salvarUsuario(await buscarPerfil(data.session));
+    try { sessionStorage.setItem('pv.ok', 'Senha nova salva!'); } catch {}
+    location.replace(location.pathname);
+  } catch (e2){ console.error(e2); erro.textContent = /different from the old|same/i.test(String(e2.message)) ? 'A senha nova precisa ser diferente da antiga.' : traduzErro(e2); bt.disabled = false; bt.textContent = 'Salvar a senha nova'; }
+});
 
 /* ===================== ADMINISTRAÇÃO (só para o administrador) ===================== */
 const LIMITE_PLANO_MB = 1024;            // plano gratuito do Supabase: 1 GB de arquivos para todos
@@ -2292,7 +2560,16 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 async function iniciar(){
   const msg = (() => { try { const m = sessionStorage.getItem('pv.msg'); sessionStorage.removeItem('pv.msg'); return m; } catch { return null; } })();
-  if (!USUARIO){ pintarAba(); irPara('entrar'); if (msg) $('#ac-erro').textContent = msg; verificarConta(); return; }
+  const ok = (() => { try { const m = sessionStorage.getItem('pv.ok'); sessionStorage.removeItem('pv.ok'); return m; } catch { return null; } })();
+  if (ok) setTimeout(() => aviso(ok, 4000), 600);
+  if (VEIO_RECUPERAR) return telaNovaSenha();
+  if (ERRO_LINK){ history.replaceState(null, '', location.pathname); }
+  if (!USUARIO){
+    pintarAba(); irPara('entrar');
+    if (ERRO_LINK) $('#ac-erro').textContent = 'O link do e-mail expirou ou já foi usado. Peça outro em “Esqueci minha senha”.';
+    else if (msg) $('#ac-erro').textContent = msg;
+    verificarConta(); return;
+  }
   if (USUARIO.situacao === 'aprovado') await entrarNoApp();
   else mostrarAguardando();
   verificarConta();
