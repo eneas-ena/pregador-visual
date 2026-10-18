@@ -404,6 +404,36 @@ li > .nota-linha{margin:.3em 0}
 .btn.verde{background:#3CB371;border-color:#3CB371;color:#fff}
 .sl-codigo{width:100%;font-size:12.5px;color:var(--txt2)}
 .menu-opcoes{display:flex;flex-direction:column;gap:10px}
+.imp-opcoes{display:flex;flex-direction:column;gap:10px;margin:4px 0 16px;padding:12px 14px;border:1px solid var(--linha);border-radius:12px;background:var(--bg2)}
+.imp-opcoes label{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
+.imp-opcoes input{width:20px;height:20px;accent-color:var(--ouro);flex-shrink:0}
+#impressao{display:none}
+@media print{
+  @page{margin:16mm 15mm}
+  html,body{height:auto!important;overflow:visible!important;background:#fff!important;color:#14213F!important}
+  body > *:not(#impressao){display:none!important}
+  #impressao{display:block!important;font-family:'Source Sans 3',Arial,sans-serif;font-size:12.5pt;line-height:1.5;color:#14213F}
+  #impressao *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .imp-titulo{font-family:Cinzel,Georgia,serif;color:#0F1B33;font-size:22pt;line-height:1.2;margin:0 0 4pt}
+  .imp-meta{color:#55607A;font-size:10.5pt;padding-bottom:6pt;border-bottom:1.5pt solid #C9A227;margin-bottom:14pt}
+  #impressao h1{font-family:Cinzel,Georgia,serif;color:#0F1B33;font-size:17pt;margin:14pt 0 6pt;break-after:avoid}
+  #impressao h2{font-family:Cinzel,Georgia,serif;color:#7D6310;font-size:14pt;margin:14pt 0 5pt;break-after:avoid}
+  #impressao h3{color:#7D6310;font-size:12.5pt;margin:10pt 0 4pt;break-after:avoid}
+  #impressao p{margin:0 0 7pt;orphans:3;widows:3}
+  #impressao ul,#impressao ol{margin:0 0 8pt 18pt}
+  #impressao blockquote{border-left:3pt solid #C9A227;background:#F7F1E1;padding:5pt 10pt;margin:4pt 0 9pt;font-style:italic;border-radius:0 6pt 6pt 0}
+  #impressao blockquote p:last-child{margin:0}
+  #impressao mark{background:#FFE866!important;color:inherit} #impressao mark.mk-verde{background:#B9F0C4!important} #impressao mark.mk-vermelho{background:#FFC2C2!important} #impressao mark.mk-rosa{background:#FFC6DD!important} #impressao mark.mk-azul{background:#C4E0FF!important}
+  #impressao .fc-amarelo{color:#9A7300!important} #impressao .fc-verde{color:#1E8E3E!important} #impressao .fc-vermelho{color:#C62828!important} #impressao .fc-rosa{color:#C2185B!important} #impressao .fc-azul{color:#1565C0!important}
+  #impressao .sb{text-decoration:underline;text-decoration-thickness:1.5pt;text-underline-offset:2pt}
+  #impressao .sb-amarelo{text-decoration-color:#C9A227} #impressao .sb-verde{text-decoration-color:#4CC878} #impressao .sb-vermelho{text-decoration-color:#E5484D} #impressao .sb-rosa{text-decoration-color:#FF69A0} #impressao .sb-azul{text-decoration-color:#5AA9FF}
+  .imp-nota{font-style:italic;font-weight:600;font-size:10.5pt;color:#B85C00;border-left:2pt solid #F5994A;padding:1pt 0 1pt 7pt;margin:-3pt 0 8pt}
+  .imp-textos{margin-top:18pt;border-top:1pt solid #E2D7B5;padding-top:6pt}
+  .imp-texto{break-inside:avoid;margin:0 0 9pt}
+  .imp-texto b{color:#7D6310;display:block;margin-bottom:2pt}
+  .imp-texto div{white-space:pre-wrap}
+  .imp-rodape{margin-top:20pt;font-size:9pt;color:#8A93A8;text-align:center}
+}
 .menu-opcoes .btn{flex-direction:column;align-items:flex-start;white-space:normal;text-align:left;gap:3px;padding:12px 14px;width:100%}
 .menu-opcoes .btn span{font-weight:400;font-size:13.5px;color:var(--txt2);line-height:1.4}
 .menu-opcoes .btn.prim span{color:#0F1B33}
@@ -691,7 +721,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.2.0';
+const VERSAO = '2.3.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -938,7 +968,7 @@ async function desenharLista(){
         </button>
         <button class="btn" data-editar="${s.id}">Editar</button>
         ${hist[s.id] ? `<button class="btn" data-hist="${s.id}">Histórico</button>` : ''}
-        <button class="btn" data-mais="${s.id}" title="Salvar cópia ou arquivar" style="margin-left:auto">⋯</button>
+        <button class="btn" data-mais="${s.id}" title="Imprimir, compartilhar, salvar cópia ou arquivar" style="margin-left:auto">⋯</button>
       </div>
     </div>`).join('');
 }
@@ -1516,15 +1546,15 @@ const hoje = () => new Date().toISOString().slice(0, 10);
 const semInterno = o => { const c = { ...o }; delete c._pendente; delete c.user_id; return c; };
 
 // mostra "Arquivo pronto" e entrega quando o pastor tocar (o iPad só abre o "Salvar" logo após um toque)
-function entregarArquivo(partes, nome){
-  const arq = new File(partes, nome, { type: 'application/json' });
+function entregarArquivo(partes, nome, tipo = 'application/json'){
+  const arq = new File(partes, nome, { type: tipo });
   const tam = arq.size > 1048576 ? (arq.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(arq.size / 1024)) + ' KB';
   return new Promise(fim => {
     abrirModal(`
       <h2>Arquivo pronto</h2>
       <p class="sub" style="word-break:break-all">${esc(nome)} · ${tam}</p>
-      <p style="line-height:1.55;margin-bottom:14px">${ehIOS ? 'Toque em <b>Salvar o arquivo</b> e escolha <b>“Salvar em Arquivos”</b> (iCloud Drive ou No meu iPad).' : 'Toque em <b>Salvar o arquivo</b>. Ele vai para a pasta de Downloads.'}<br>Guarde-o em lugar seguro.</p>
-      <div class="acoes"><button class="btn" id="ea-cancelar">Cancelar</button><button class="btn prim" id="ea-salvar">Salvar o arquivo</button></div>`);
+      <p style="line-height:1.55;margin-bottom:14px">${ehIOS ? 'Toque em <b>Salvar ou enviar</b> e escolha <b>“Salvar em Arquivos”</b>' + (tipo === 'application/json' ? ' (iCloud Drive ou No meu iPad).' : ', ou mande direto por WhatsApp, e-mail…') : 'Toque em <b>Salvar ou enviar</b>. O arquivo vai para a pasta de Downloads.'}${tipo === 'application/json' ? '<br>Guarde-o em lugar seguro.' : ''}</p>
+      <div class="acoes"><button class="btn" id="ea-cancelar">Cancelar</button><button class="btn prim" id="ea-salvar">Salvar ou enviar</button></div>`);
     $('#ea-cancelar').onclick = () => { fecharModal(); fim(false); };
     $('#ea-salvar').onclick = async () => {
       if (ehIOS && navigator.canShare && navigator.canShare({ files: [arq] })){
@@ -1595,9 +1625,11 @@ function menuSermao(id){
       <h2>${esc(s.titulo)} <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
       <p class="sub">${n ? n + ' slide(s)' : 'Sem slides'}</p>
       <div class="menu-opcoes">
+        <button class="btn" id="ms-imprimir"><b>🖨 Imprimir ou compartilhar (PDF / Word)</b><span>Com as suas marcações, notas e textos bíblicos, para imprimir, guardar ou mandar para alguém.</span></button>
         <button class="btn" id="ms-exportar"><b>💾 Salvar uma cópia no aparelho</b><span>Arquivo com o texto, marcações, notas, textos bíblicos, histórico${n ? ' e slides' : ''}. O sermão continua no app.</span></button>
         <button class="btn" id="ms-arquivar"><b>📦 Arquivar (salvar e liberar espaço)</b><span>Salva o arquivo e depois tira o sermão do app${n ? ', apagando os slides da nuvem' : ''}. Volta igualzinho em Minha conta › Restaurar.</span></button>
       </div>`);
+    $('#ms-imprimir').onclick = () => { fecharModal(); menuImprimir(id); };
     $('#ms-exportar').onclick = () => { fecharModal(); exportarSermao(id); };
     $('#ms-arquivar').onclick = () => { fecharModal(); arquivarSermao(id); };
   });
@@ -1695,6 +1727,200 @@ async function restaurar(dados, modo){
   irPara('inicio'); desenharLista(); sincronizar();
 }
 $('#arq-restaurar').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) lerArquivoRestauracao(f); });
+
+/* ===================== IMPRIMIR · PDF · WORD (.docx) ===================== */
+const CORES_DOC = {
+  realce: { amarelo: 'FFE866', verde: 'B9F0C4', vermelho: 'FFC2C2', rosa: 'FFC6DD', azul: 'C4E0FF' },
+  letra:  { amarelo: '9A7300', verde: '1E8E3E', vermelho: 'C62828', rosa: 'C2185B', azul: '1565C0' },
+  sub:    { amarelo: 'C9A227', verde: '4CC878', vermelho: 'E5484D', rosa: 'FF69A0', azul: '5AA9FF' }
+};
+const corDe = (el, prefixo) => { const m = [...el.classList].find(c => c.startsWith(prefixo)); return m ? m.slice(prefixo.length) : 'amarelo'; };
+const BLOCOS_DOC = 'h1,h2,h3,h4,h5,h6,p,blockquote,li,pre,td,th';
+// o Título 1 do Word costuma ser o próprio nome do sermão: não repetir no papel
+const mesmoTexto = (a, b) => semAcento(String(a || '')).replace(/[^a-z0-9]/g, '') === semAcento(String(b || '')).replace(/[^a-z0-9]/g, '');
+function tirarTituloRepetido(raiz, titulo){
+  const h = [...raiz.children].find(x => x.textContent.trim());
+  if (h && /^H[1-3]$/.test(h.tagName) && mesmoTexto(h.textContent, titulo)) h.remove();
+}
+
+// prepara o HTML do sermão para imprimir (com ou sem marcações e notas)
+function htmlParaImprimir(html, op, titulo){
+  const d = new DOMParser().parseFromString('<div id="r">' + (html || '') + '</div>', 'text/html'), r = d.getElementById('r');
+  tirarTituloRepetido(r, titulo);
+  r.querySelectorAll('.gerado, .ref-link-x').forEach(x => x.remove());
+  r.querySelectorAll('.ref-link').forEach(x => x.replaceWith(...x.childNodes));
+  if (!op.marcas) r.querySelectorAll('mark, span.fc, span.sb').forEach(x => x.replaceWith(...x.childNodes));
+  // notas: viram uma linha logo abaixo do parágrafo (como no púlpito) ou somem
+  const porBloco = new Map();
+  r.querySelectorAll('span.nota').forEach(n => {
+    if (op.notas && n.dataset.nota){ const b = n.closest(BLOCOS_DOC) || n.parentElement; if (!porBloco.has(b)) porBloco.set(b, []); porBloco.get(b).push(n.dataset.nota); }
+    n.remove();
+  });
+  porBloco.forEach((ts, b) => ts.reverse().forEach(t => {
+    const x = d.createElement('div'); x.className = 'imp-nota'; x.textContent = '📌 ' + t;
+    if (b.matches('li,td,th')) b.appendChild(x); else b.insertAdjacentElement('afterend', x);
+  }));
+  return r.innerHTML;
+}
+function cabecalhoDoc(s){
+  return [fmtData(s.data_pregacao) !== 'Sem data' ? fmtData(s.data_pregacao) : '', s.culto || '', USUARIO && USUARIO.nome ? USUARIO.nome : ''].filter(Boolean).join(' · ');
+}
+function imprimirSermao(s, op){
+  let box = $('#impressao');
+  if (!box){ box = document.createElement('section'); box.id = 'impressao'; document.body.appendChild(box); }
+  const textos = (s.textos || []).filter(t => t.ref && String(t.texto || '').trim());
+  box.innerHTML = `
+    <h1 class="imp-titulo">${esc(s.titulo)}</h1>
+    <div class="imp-meta">${esc(cabecalhoDoc(s))}${s.textos && s.textos[s.base_idx || 0] ? ' · Texto: ' + esc(s.textos[s.base_idx || 0].ref) : ''}</div>
+    <div class="imp-corpo">${htmlParaImprimir(s.conteudo_html, op, s.titulo)}</div>
+    ${op.textos && textos.length ? `<div class="imp-textos"><h2>Textos bíblicos</h2>${textos.map(t => `<div class="imp-texto"><b>${esc(t.ref)}</b><div>${esc(t.texto)}</div></div>`).join('')}</div>` : ''}
+    <div class="imp-rodape">Pregador Visual</div>`;
+  const limpar = () => { box.innerHTML = ''; };
+  window.addEventListener('afterprint', limpar, { once: true });
+  setTimeout(() => { try { window.print(); } catch { aviso('Este aparelho não permitiu imprimir. Use a opção Word (.docx).', 6000); } }, 350);
+}
+
+let _docxCarregando = null;
+function carregarDocx(){
+  if (window.docx) return Promise.resolve(window.docx);
+  if (!_docxCarregando) _docxCarregando = new Promise((ok, erro) => {
+    const sc = document.createElement('script'); sc.src = 'docx.min.js';
+    sc.onload = () => window.docx ? ok(window.docx) : erro(new Error('docx'));
+    sc.onerror = () => { _docxCarregando = null; erro(new Error('docx')); };
+    document.head.appendChild(sc);
+  });
+  return _docxCarregando;
+}
+async function gerarDocx(s, op){
+  const D = await carregarDocx();
+  const { Document, Paragraph, TextRun, HeadingLevel, AlignmentType, Packer, Footer, PageNumber, ShadingType, BorderStyle, LevelFormat } = D;
+  const AZUL = '0F1B33', OURO = '7D6310', CINZA = '55607A';
+  const d = new DOMParser().parseFromString('<div id="r">' + (s.conteudo_html || '') + '</div>', 'text/html'), raiz = d.getElementById('r');
+  raiz.querySelectorAll('.gerado').forEach(x => x.remove());
+  tirarTituloRepetido(raiz, s.titulo);
+  const filhos = [];
+  // trechos de texto com o estilo acumulado (negrito, itálico, realce, cor, sublinhado)
+  function runs(no, est, notas){
+    const out = [];
+    no.childNodes.forEach(n => {
+      if (n.nodeType === 3){ if (n.nodeValue) out.push(new TextRun({ text: n.nodeValue.replace(/\s+/g, ' '), ...est })); return; }
+      if (n.nodeType !== 1) return;
+      const t = n.tagName.toLowerCase(), e = { ...est };
+      if (t === 'br'){ out.push(new TextRun({ break: 1 })); return; }
+      if (n.matches('span.nota')){ if (op.notas && n.dataset.nota) notas.push(n.dataset.nota); return; }
+      if (t === 'strong' || t === 'b') e.bold = true;
+      if (t === 'em' || t === 'i') e.italics = true;
+      if (t === 'u') e.underline = {};
+      if (t === 'sup') e.superScript = true;
+      if (t === 'sub') e.subScript = true;
+      if (op.marcas){
+        if (t === 'mark') e.shading = { type: ShadingType.CLEAR, color: 'auto', fill: CORES_DOC.realce[corDe(n, 'mk-')] || 'FFE866' };
+        if (n.matches('span.fc')) e.color = CORES_DOC.letra[corDe(n, 'fc-')] || e.color;
+        if (n.matches('span.sb')) e.underline = { type: 'single', color: CORES_DOC.sub[corDe(n, 'sb-')] || 'C9A227' };
+      }
+      out.push(...runs(n, e, notas));
+    });
+    return out;
+  }
+  const notaPar = t => new Paragraph({ indent: { left: 240 }, spacing: { after: 160 }, border: { left: { style: BorderStyle.SINGLE, size: 12, color: 'F5994A', space: 6 } },
+    children: [new TextRun({ text: '📌 ' + t, italics: true, color: 'B85C00', size: 20 })] });
+  function bloco(el, extra = {}){
+    const notas = [], t = el.tagName.toLowerCase();
+    const base = {};
+    if (t === 'blockquote') Object.assign(base, { italics: true });
+    const ch = runs(el, base, notas);
+    const p = { children: ch.length ? ch : [new TextRun('')], spacing: { after: 160, line: 300 }, ...extra };
+    if (/^h[1-6]$/.test(t)){
+      const nv = { h1: HeadingLevel.HEADING_1, h2: HeadingLevel.HEADING_2, h3: HeadingLevel.HEADING_3 }[t] || HeadingLevel.HEADING_4;
+      Object.assign(p, { heading: nv, spacing: { before: 280, after: 120 }, keepNext: true });
+    }
+    if (t === 'blockquote') Object.assign(p, { indent: { left: 360 }, shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'F7F1E1' }, border: { left: { style: BorderStyle.SINGLE, size: 18, color: 'C9A227', space: 8 } } });
+    filhos.push(new Paragraph(p));
+    notas.forEach(n => filhos.push(notaPar(n)));
+  }
+  function percorrer(cont, lista){
+    [...cont.children].forEach(el => {
+      const t = el.tagName.toLowerCase();
+      if (t === 'ul' || t === 'ol'){
+        [...el.children].filter(li => li.tagName === 'LI').forEach(li => {
+          const sub = [...li.children].filter(c => /^(UL|OL)$/.test(c.tagName)); sub.forEach(c => c.remove());
+          bloco(li, t === 'ol' ? { numbering: { reference: 'numeros', level: 0 } } : { bullet: { level: lista ? 1 : 0 } });
+          sub.forEach(c => percorrer({ children: [c] }, true));
+        });
+      } else if (t === 'table'){
+        el.querySelectorAll('tr').forEach(tr => { const p = d.createElement('p'); p.innerHTML = [...tr.children].map(c => c.innerHTML).join(' &nbsp;|&nbsp; '); bloco(p); });
+      } else if (t === 'blockquote' && el.querySelector('p')){
+        [...el.children].forEach(c => { const q = d.createElement('blockquote'); q.innerHTML = c.innerHTML; bloco(q); });
+      } else if (/^(div|section|article)$/.test(t)) percorrer(el, lista);
+      else if (/^(h[1-6]|p|blockquote|pre)$/.test(t)) bloco(el);
+      else { const p = d.createElement('p'); p.appendChild(el.cloneNode(true)); bloco(p); }
+    });
+  }
+  // título e cabeçalho
+  filhos.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: s.titulo || 'Sermão' })], spacing: { after: 80 } }));
+  const meta = cabecalhoDoc(s) + (s.textos && s.textos[s.base_idx || 0] ? ' · Texto: ' + s.textos[s.base_idx || 0].ref : '');
+  if (meta) filhos.push(new Paragraph({ children: [new TextRun({ text: meta, color: CINZA, size: 21 })], spacing: { after: 280 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'C9A227', space: 6 } } }));
+  percorrer(raiz, false);
+  const textos = (s.textos || []).filter(t => t.ref && String(t.texto || '').trim());
+  if (op.textos && textos.length){
+    filhos.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun('Textos bíblicos')], spacing: { before: 480, after: 160 }, pageBreakBefore: false }));
+    textos.forEach(t => {
+      filhos.push(new Paragraph({ keepNext: true, spacing: { before: 120, after: 60 }, children: [new TextRun({ text: t.ref, bold: true, color: OURO })] }));
+      const linhas = String(t.texto).split(/\r?\n/);
+      filhos.push(new Paragraph({ spacing: { after: 160, line: 300 }, children: linhas.flatMap((l, i) => i ? [new TextRun({ text: l, break: 1 })] : [new TextRun(l)]) }));
+    });
+  }
+  const doc = new Document({
+    creator: 'Pregador Visual', title: s.titulo || 'Sermão',
+    styles: {
+      default: { document: { run: { font: 'Calibri', size: 24, color: '14213F' } } },
+      paragraphStyles: [
+        { id: 'Title', name: 'Title', basedOn: 'Normal', next: 'Normal', run: { font: 'Georgia', size: 44, bold: true, color: AZUL } },
+        { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { font: 'Georgia', size: 34, bold: true, color: AZUL }, paragraph: { spacing: { before: 320, after: 140 } } },
+        { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { font: 'Georgia', size: 28, bold: true, color: OURO }, paragraph: { spacing: { before: 280, after: 120 } } },
+        { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { font: 'Georgia', size: 25, bold: true, color: OURO } },
+        { id: 'Heading4', name: 'Heading 4', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { bold: true } }
+      ]
+    },
+    numbering: { config: [{ reference: 'numeros', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.START, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
+    sections: [{
+      properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
+      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Pregador Visual · página ', color: '8A93A8', size: 18 }), new TextRun({ children: [PageNumber.CURRENT], color: '8A93A8', size: 18 })] })] }) },
+      children: filhos
+    }]
+  });
+  return Packer.toBlob(doc);
+}
+
+const OP_IMP_PADRAO = { marcas: true, notas: true, textos: true };
+function menuImprimir(id){
+  dbPegar('sermoes', id).then(s => {
+    if (!s) return;
+    const op = { ...OP_IMP_PADRAO, ...lerLS('pv.imprimir', {}) };
+    abrirModal(`
+      <h2>Imprimir ou compartilhar <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+      <p class="sub">${esc(s.titulo)}</p>
+      <div class="imp-opcoes">
+        <label><input type="checkbox" id="io-marcas" ${op.marcas ? 'checked' : ''}> Manter realces, cores e sublinhados</label>
+        <label><input type="checkbox" id="io-notas" ${op.notas ? 'checked' : ''}> Incluir as notas de púlpito 📌</label>
+        <label><input type="checkbox" id="io-textos" ${op.textos ? 'checked' : ''}> Incluir os textos bíblicos no final</label>
+      </div>
+      <div class="menu-opcoes">
+        <button class="btn" id="io-pdf"><b>🖨 Imprimir ou salvar em PDF</b><span>${ehIOS ? 'Abre a impressão do iPad/iPhone. Para PDF, toque no botão de compartilhar da tela de impressão.' : 'Abre a impressão. Para PDF, escolha “Salvar como PDF” como impressora.'}</span></button>
+        <button class="btn" id="io-docx"><b>📄 Word (.docx)</b><span>Arquivo para editar no Word ou no Pages, mandar por WhatsApp ou e-mail.</span></button>
+      </div>`);
+    const ler = () => { const o = { marcas: $('#io-marcas').checked, notas: $('#io-notas').checked, textos: $('#io-textos').checked }; gravarLS('pv.imprimir', o); return o; };
+    $('#io-pdf').onclick = () => { const o = ler(); fecharModal(); imprimirSermao(s, o); };
+    $('#io-docx').onclick = async () => {
+      const o = ler(), b = $('#io-docx'); b.disabled = true; b.querySelector('b').textContent = 'Preparando o Word…';
+      try {
+        const blob = await gerarDocx(s, o);
+        fecharModal();
+        await entregarArquivo([blob], `${nomeArquivo(s.titulo)}${s.data_pregacao ? '-' + s.data_pregacao : ''}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      } catch (e){ console.error(e); fecharModal(); aviso('Não consegui gerar o Word. Se estiver sem internet pela primeira vez, abra o app com internet e tente de novo.', 7000); }
+    };
+  });
+}
 
 /* ===================== RECUPERAR A SENHA ===================== */
 function pedirRecuperacao(){

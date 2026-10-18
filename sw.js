@@ -1,10 +1,10 @@
 // Pregador Visual — service worker (funciona sem internet)
-const VERSAO = '2.2.0';
+const VERSAO = '2.3.0';
 // nome diferente do Pregador pessoal ("pregador-…"), para um nunca apagar o cache do outro
 const CACHE = 'pvisual-' + VERSAO;
 const ARQUIVOS = [
   './', './index.html', './config.js', './manifest.json', './mammoth.min.js',
-  './supabase.min.js', './pdf.min.mjs', './pdf.worker.min.mjs', './projetor.html',
+  './supabase.min.js', './docx.min.js', './pdf.min.mjs', './pdf.worker.min.mjs', './projetor.html',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'
 ];
 
