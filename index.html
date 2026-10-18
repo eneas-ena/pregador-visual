@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="config.js"></script>
+<script src="traducao-en.js"></script>
 <script src="mammoth.min.js"></script>
 <script src="supabase.min.js"></script>
 <style>
@@ -364,6 +365,7 @@ li > .nota-linha{margin:.3em 0}
 .acesso-abas{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--linha);border-radius:12px;overflow:hidden}
 .acesso-abas button{padding:10px;font-weight:600;color:var(--txt2)}
 .acesso-abas button.on{background:var(--ouro);color:#0F1B33}
+.idioma-bt{padding:8px 12px;font-size:14px}
 .acesso-erro{color:var(--perigo);font-size:14px;min-height:1em}
 .acesso-link{color:var(--ouro);font-size:14px;text-decoration:underline;align-self:center}
 .acesso-msg{color:var(--txt2);font-size:16px;line-height:1.55;text-align:center}
@@ -444,7 +446,7 @@ li > .nota-linha{margin:.3em 0}
 
 <!-- ===================== TELA: ENTRAR ===================== -->
 <section id="entrar" class="tela acesso">
-  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <div class="acesso-topo"><button class="btn idioma-bt" data-idioma title="Idioma / Language"></button><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
   <form class="acesso-caixa" id="form-entrar" autocomplete="on">
     <div class="logo">
       <img src="icon-192.png" alt="">
@@ -465,7 +467,7 @@ li > .nota-linha{margin:.3em 0}
 
 <!-- ===================== TELA: SENHA NOVA (link do e-mail) ===================== -->
 <section id="nova-senha" class="tela acesso">
-  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <div class="acesso-topo"><button class="btn idioma-bt" data-idioma title="Idioma / Language"></button><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
   <form class="acesso-caixa" id="form-nova-senha">
     <div class="logo"><img src="icon-192.png" alt=""><h1>Senha nova</h1><p>Conta: <b id="ns-email">…</b></p></div>
     <div><label class="rot" for="ns-senha">Senha nova</label><input id="ns-senha" type="password" autocomplete="new-password" minlength="6" required></div>
@@ -477,7 +479,7 @@ li > .nota-linha{margin:.3em 0}
 
 <!-- ===================== TELA: AGUARDANDO APROVAÇÃO ===================== -->
 <section id="aguardando" class="tela acesso">
-  <div class="acesso-topo"><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
+  <div class="acesso-topo"><button class="btn idioma-bt" data-idioma title="Idioma / Language"></button><span class="versao" data-versao></span><button class="icone" data-tema title="Modo claro/escuro"></button></div>
   <div class="acesso-caixa">
     <div class="logo"><img src="icon-192.png" alt=""><h1>Pregador Visual</h1></div>
     <p class="acesso-msg" id="ag-msg"></p>
@@ -721,11 +723,13 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.3.0';
+const VERSAO = '2.4.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
 
+// Idioma das telas: escolhido pelo pastor ou, na primeira vez, o idioma do aparelho
+const IDIOMA = (() => { try { const v = localStorage.getItem('pv.idioma'); if (v === 'pt' || v === 'en') return v; } catch {} return /^pt/i.test(navigator.language || 'pt') ? 'pt' : 'en'; })();
 // Pastor conectado neste aparelho (guardado para abrir mesmo sem internet)
 let USUARIO = null;
 try { USUARIO = JSON.parse(localStorage.getItem('pv.usuario') || 'null'); } catch {}
@@ -740,6 +744,64 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx
 function aviso(msg, ms = 2600){ const a = $('#aviso'); a.textContent = msg; a.classList.add('on'); clearTimeout(a._t); a._t = setTimeout(() => a.classList.remove('on'), ms); }
 function lerLS(k, padrao){ try { const v = localStorage.getItem(k); return v == null ? padrao : JSON.parse(v); } catch { return padrao; } }
 function gravarLS(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+/* ===================== IDIOMA (Português / English) ===================== */
+// As telas são escritas em português; em inglês, cada texto que aparece é trocado pela tradução.
+// O conteúdo do pastor (sermão, notas, títulos, textos bíblicos) nunca é traduzido.
+const EN = window.PV_EN || { exato: {}, padroes: [] };
+const LOCALE = IDIOMA === 'en' ? 'en-US' : 'pt-BR';
+const t = k => IDIOMA === 'en' && EN.exato[k] !== undefined ? EN.exato[k] : k;
+const NAO_TRADUZIR_ATR = '#conteudo, #ed-previa, #impressao';
+const NAO_TRADUZIR = '#conteudo, #ed-previa, #ct-corpo, #ct-ref, #p-titulo, #p-base-ref, #p-base-ref2, #menu-topicos, #impressao, #balao, .nota-linha, #sl-grade, .cartao h3, .hist-tit, .adm-cartao h3 > span:first-child, #ns-email, textarea, script, style';
+function traduzir(txt){
+  if (IDIOMA !== 'en' || !txt) return txt;
+  const k = txt.trim(); if (!k) return txt;
+  let r = EN.exato[k];
+  if (r === undefined){
+    r = k;
+    for (const [re, troca] of EN.padroes){ re.lastIndex = 0; if (re.test(r)){ re.lastIndex = 0; r = r.replace(re, troca); } }
+    if (r === k) return txt;
+  }
+  return txt.match(/^\s*/)[0] + r + txt.match(/\s*$/)[0];
+}
+const traduzirMsg = m => { const k = String(m ?? ''); return EN.exato[k.trim()] !== undefined ? traduzir(k) : k.split('\n').map(traduzir).join('\n'); };
+function traduzirNo(n){
+  const p = n.parentElement; if (!p || p.closest(NAO_TRADUZIR)) return;
+  const v = traduzir(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v;
+}
+function traduzirAtributos(el){
+  ['placeholder', 'title', 'aria-label'].forEach(a => { const v = el.getAttribute(a); if (v){ const tr = traduzir(v); if (tr !== v) el.setAttribute(a, tr); } });
+}
+function traduzirArvore(raiz){
+  if (raiz.nodeType === 3) return traduzirNo(raiz);
+  if (raiz.nodeType !== 1) return;
+  if (!raiz.closest(NAO_TRADUZIR_ATR)) raiz.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el => { if (!el.closest(NAO_TRADUZIR_ATR)) traduzirAtributos(el); });
+  if (raiz.closest(NAO_TRADUZIR)) return;
+  traduzirAtributos(raiz);
+  raiz.querySelectorAll('[placeholder],[title],[aria-label]').forEach(el => { if (!el.closest(NAO_TRADUZIR_ATR)) traduzirAtributos(el); });
+  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  let n; while ((n = w.nextNode())) traduzirNo(n);
+}
+if (IDIOMA === 'en'){
+  document.documentElement.lang = 'en';
+  traduzirArvore(document.body);
+  new MutationObserver(ms => ms.forEach(m => {
+    if (m.type === 'characterData') traduzirNo(m.target);
+    else if (m.type === 'attributes') { if (!m.target.closest(NAO_TRADUZIR_ATR)) traduzirAtributos(m.target); }
+    else m.addedNodes.forEach(traduzirArvore);
+  })).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
+  const _confirm = window.confirm.bind(window), _alert = window.alert.bind(window);
+  window.confirm = m => _confirm(traduzirMsg(m));
+  window.alert = m => _alert(traduzirMsg(m));
+  // sugestões de culto em inglês
+  const dl = document.getElementById('cultos');
+  if (dl) dl.innerHTML = ['Morning', 'Afternoon', 'Evening', 'Bible study', 'Communion'].map(v => `<option value="${v}">`).join('');
+}
+function trocarIdioma(l){ try { localStorage.setItem('pv.idioma', l); } catch {} location.reload(); }
+document.querySelectorAll('[data-idioma]').forEach(b => {
+  b.textContent = IDIOMA === 'en' ? 'Português' : 'English';
+  b.addEventListener('click', () => trocarIdioma(IDIOMA === 'en' ? 'pt' : 'en'));
+});
 
 // chave normalizada da referência: "Fp 3:7-14" -> "fp3.7-14"
 function chaveRef(ref){
@@ -876,16 +938,31 @@ const LIVROS = {
   tm:['timoteo','tim','tm'], tt:['tito','tt'], fm:['filemom','filemon','fm'], hb:['hebreus','heb','hb'], tg:['tiago','tg'], pe:['pedro','ped','pe'],
   jd:['judas','jd'], ap:['apocalipse','apoc','ap']
 };
+// nomes e abreviações em inglês (John 3:16, Phil 3:7, 1 Kings 4:3, Song of Solomon 2:4)
+const LIVROS_EN = {
+  gn:['genesis'], ex:['exodus','exod'], lv:['leviticus'], nm:['numbers'], dt:['deuteronomy'],
+  js:['joshua','josh'], jz:['judges','judg','jdg'], rt:['ruth'], rs:['kings','kgs','ki'], cr:['chronicles','chron','chr'],
+  ed:['ezra'], ne:['nehemiah','neh'], et:['esther','esth'], jb:['job'], sl:['psalms','psalm','psa','ps'], pv:['proverbs'],
+  ec:['ecclesiastes','eccles','eccl'], ct:['song of solomon','song of songs','song'], is:['isaiah'], jr:['jeremiah'], lm:['lamentations'],
+  ez:['ezekiel','ezek','eze'], dn:['daniel'], os:['hosea','hos'], ob:['obadiah','obad'], jn:['jonah','jon'],
+  mq:['micah','mic'], na:['nahum','nah'], hc:['habakkuk'], sf:['zephaniah','zeph'], ag:['haggai','hag'], zc:['zechariah','zech'], ml:['malachi'],
+  mt:['matthew','matt'], mc:['mark','mrk','mk'], lc:['luke','lk'], jo:['john','jhn'], at:['acts'], rm:['romans'], co:['corinthians'],
+  gl:['galatians'], ef:['ephesians','eph'], fp:['philippians','phil','php'], cl:['colossians'], ts:['thessalonians','thess','thes'],
+  tm:['timothy'], tt:['titus','tit'], fm:['philemon','philem','phlm'], hb:['hebrews'], tg:['james','jas'], pe:['peter','pet'],
+  jd:['jude'], ap:['revelation','revelations','rev']
+};
 const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const NOME_LIVRO = {}; Object.entries(LIVROS).forEach(([id, ns]) => ns.forEach(n => NOME_LIVRO[n] = id));
+Object.entries(LIVROS_EN).forEach(([id, ns]) => ns.forEach(n => { if (!NOME_LIVRO[n]) NOME_LIVRO[n] = id; }));
+if (IDIOMA === 'en') NOME_LIVRO.jn = 'jo';        // em inglês, "Jn" é João (em português é Jonas)
 const RE_REF = (() => {
   const classes = { a:'[aáàâã]', e:'[eéêè]', i:'[iíî]', o:'[oóôõ]', u:'[uúü]', c:'[cç]' };
-  const alt = Object.keys(NOME_LIVRO).sort((a, b) => b.length - a.length).map(n => n.replace(/[aeiouc]/g, ch => classes[ch])).join('|');
+  const alt = Object.keys(NOME_LIVRO).sort((a, b) => b.length - a.length).map(n => n.replace(/[aeiouc]/g, ch => classes[ch]).replace(/ /g, '\\s+')).join('|');
   const V = '[1-9]\\d{0,2}', FAIXA = `${V}(?:\\s?[-–—]\\s?${V})?`;
   return new RegExp(`(^|[^0-9A-Za-zÀ-ÿ])((?:([123])\\s?[ºª°]?\\s?)?(${alt})\\.?\\s?(\\d{1,3})\\s?[:.]\\s?(${FAIXA}(?:\\s?,\\s?${FAIXA})*)[a-c]?)(?![0-9A-Za-zÀ-ÿ])`, 'gi');
 })();
 function montarRef(num, token, cap, vers){
-  let id = NOME_LIVRO[semAcento(token)];
+  let id = NOME_LIVRO[semAcento(token).replace(/\s+/g, ' ')];
   if (!id) return null;
   if (id === 'jo' && /ó/i.test(token) && !num) id = 'jb';          // Jó (e não João)
   const faixas = vers.split(',').map(f => f.split(/[-–—]/).map(x => parseInt(x, 10))).map(([a, b]) => [a, b || a]);
@@ -940,7 +1017,7 @@ function refsSemTexto(html, textos){
 }
 
 /* ===================== LISTA DE SERMÕES ===================== */
-function fmtData(d){ if (!d) return 'Sem data'; const [a, m, dia] = d.split('-'); return `${dia}/${m}/${a}`; }
+function fmtData(d){ if (!d) return 'Sem data'; const [a, m, dia] = d.split('-'); return IDIOMA === 'en' ? `${m}/${dia}/${a}` : `${dia}/${m}/${a}`; }
 async function desenharLista(){
   const termo = chaveRef($('#busca').value).replace(/\./g, '');
   let lista = (await dbTodos('sermoes')).filter(s => !s.excluido);
@@ -1498,8 +1575,10 @@ $('#btn-conta').addEventListener('click', async () => {
       <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(urlProjetor() + '?codigo=' + u.codigo)}</b></div><button class="btn" data-copiar="${esc(urlProjetor() + '?codigo=' + u.codigo)}">Copiar</button></div>
       <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>` : '<p class="dica">—</p>'}
     </div>
+    <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
+      <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>
     <div class="conta-linha" style="display:block"><span>Backup e restauração</span>
-      <p class="dica" style="margin:6px 0 10px">${lerLS(K('ultimoBackup'), null) ? 'Último backup neste aparelho: ' + new Date(lerLS(K('ultimoBackup'))).toLocaleDateString('pt-BR') : 'Nenhum backup feito neste aparelho ainda.'}</p>
+      <p class="dica" style="margin:6px 0 10px">${lerLS(K('ultimoBackup'), null) ? 'Último backup neste aparelho: ' + new Date(lerLS(K('ultimoBackup'))).toLocaleDateString(LOCALE) : 'Nenhum backup feito neste aparelho ainda.'}</p>
       <div class="menu-opcoes">
         <button class="btn" id="bk-completo"><b>💾 Backup completo (com slides)</b><span>Todos os sermões com marcações, notas, textos bíblicos, histórico e slides. Arquivo maior.</span></button>
         <button class="btn" id="bk-leve"><b>📝 Backup sem os slides</b><span>Tudo, menos as imagens dos slides. Arquivo pequeno.</span></button>
@@ -1666,7 +1745,7 @@ async function lerArquivoRestauracao(arq){
   const locais = Object.fromEntries((await dbTodos('sermoes')).map(s => [s.id, s]));
   const existem = dados.sermoes.filter(it => locais[it.sermao.id] && !locais[it.sermao.id].excluido);
   const nSl = dados.sermoes.reduce((t, it) => t + (it.slides || []).length, 0);
-  const quando = dados.exportado_em ? new Date(dados.exportado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '?';
+  const quando = dados.exportado_em ? new Date(dados.exportado_em).toLocaleString(LOCALE, { dateStyle: 'short', timeStyle: 'short' }) : '?';
   abrirModal(`
     <h2>${dados.tipo === 'backup' ? 'Restaurar backup' : 'Trazer sermão de volta'} <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
     <p class="sub">Arquivo de ${esc(quando)}${dados.pastor ? ' · ' + esc(dados.pastor) : ''}</p>
@@ -1771,9 +1850,9 @@ function imprimirSermao(s, op){
   const textos = (s.textos || []).filter(t => t.ref && String(t.texto || '').trim());
   box.innerHTML = `
     <h1 class="imp-titulo">${esc(s.titulo)}</h1>
-    <div class="imp-meta">${esc(cabecalhoDoc(s))}${s.textos && s.textos[s.base_idx || 0] ? ' · Texto: ' + esc(s.textos[s.base_idx || 0].ref) : ''}</div>
+    <div class="imp-meta">${esc(cabecalhoDoc(s))}${s.textos && s.textos[s.base_idx || 0] ? ' ' + t('· Texto:') + ' ' + esc(s.textos[s.base_idx || 0].ref) : ''}</div>
     <div class="imp-corpo">${htmlParaImprimir(s.conteudo_html, op, s.titulo)}</div>
-    ${op.textos && textos.length ? `<div class="imp-textos"><h2>Textos bíblicos</h2>${textos.map(t => `<div class="imp-texto"><b>${esc(t.ref)}</b><div>${esc(t.texto)}</div></div>`).join('')}</div>` : ''}
+    ${op.textos && textos.length ? `<div class="imp-textos"><h2>${t('Textos bíblicos')}</h2>${textos.map(t => `<div class="imp-texto"><b>${esc(t.ref)}</b><div>${esc(t.texto)}</div></div>`).join('')}</div>` : ''}
     <div class="imp-rodape">Pregador Visual</div>`;
   const limpar = () => { box.innerHTML = ''; };
   window.addEventListener('afterprint', limpar, { once: true });
@@ -1857,13 +1936,13 @@ async function gerarDocx(s, op){
     });
   }
   // título e cabeçalho
-  filhos.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: s.titulo || 'Sermão' })], spacing: { after: 80 } }));
-  const meta = cabecalhoDoc(s) + (s.textos && s.textos[s.base_idx || 0] ? ' · Texto: ' + s.textos[s.base_idx || 0].ref : '');
+  filhos.push(new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun({ text: s.titulo || t('Sermão') })], spacing: { after: 80 } }));
+  const meta = cabecalhoDoc(s) + (s.textos && s.textos[s.base_idx || 0] ? ' ' + t('· Texto:') + ' ' + s.textos[s.base_idx || 0].ref : '');
   if (meta) filhos.push(new Paragraph({ children: [new TextRun({ text: meta, color: CINZA, size: 21 })], spacing: { after: 280 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'C9A227', space: 6 } } }));
   percorrer(raiz, false);
   const textos = (s.textos || []).filter(t => t.ref && String(t.texto || '').trim());
   if (op.textos && textos.length){
-    filhos.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun('Textos bíblicos')], spacing: { before: 480, after: 160 }, pageBreakBefore: false }));
+    filhos.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(t('Textos bíblicos'))], spacing: { before: 480, after: 160 }, pageBreakBefore: false }));
     textos.forEach(t => {
       filhos.push(new Paragraph({ keepNext: true, spacing: { before: 120, after: 60 }, children: [new TextRun({ text: t.ref, bold: true, color: OURO })] }));
       const linhas = String(t.texto).split(/\r?\n/);
@@ -1871,7 +1950,7 @@ async function gerarDocx(s, op){
     });
   }
   const doc = new Document({
-    creator: 'Pregador Visual', title: s.titulo || 'Sermão',
+    creator: 'Pregador Visual', title: s.titulo || t('Sermão'),
     styles: {
       default: { document: { run: { font: 'Calibri', size: 24, color: '14213F' } } },
       paragraphStyles: [
@@ -1885,7 +1964,7 @@ async function gerarDocx(s, op){
     numbering: { config: [{ reference: 'numeros', levels: [{ level: 0, format: LevelFormat.DECIMAL, text: '%1.', alignment: AlignmentType.START, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
     sections: [{
       properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
-      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Pregador Visual · página ', color: '8A93A8', size: 18 }), new TextRun({ children: [PageNumber.CURRENT], color: '8A93A8', size: 18 })] })] }) },
+      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: t('Pregador Visual · página') + ' ', color: '8A93A8', size: 18 }), new TextRun({ children: [PageNumber.CURRENT], color: '8A93A8', size: 18 })] })] }) },
       children: filhos
     }]
   });
@@ -2022,14 +2101,14 @@ function desenharAdmin(){
     const pcu = u ? Math.min(100, u.usado_bytes / 1048576 / p.limite_mb * 100) : 0;
     const lim = LIMITES.includes(p.limite_mb) ? LIMITES : [...LIMITES, p.limite_mb].sort((a, b) => a - b);
     return `<div class="adm-cartao ${p.situacao}" data-id="${p.id}">
-      <h3><span>${esc(p.nome || '(sem nome)')}${eu ? ' <span class="dica" style="font-family:inherit">· você</span>' : ''}</span><span class="selo ${p.situacao}">${p.situacao}</span></h3>
+      <h3><span>${esc(p.nome || '(sem nome)')}${eu ? ' <span class="dica" style="font-family:inherit">' + t('· você') + '</span>' : ''}</span><span class="selo ${p.situacao}">${p.situacao}</span></h3>
       <div class="meta">${esc(p.igreja || 'Igreja não informada')}</div>
       <div class="meta">${esc(p.email || '')}</div>
       <div class="meta">Cadastro em ${fmtData(String(p.criado_em).slice(0, 10))}${u && u.ultimo_acesso ? ' · último acesso ' + fmtData(String(u.ultimo_acesso).slice(0, 10)) : ''}${u ? ' · ' + u.sermoes + ' sermão(ões)' : ''}</div>
       <div class="meta">Slides: ${u ? mb(u.usado_bytes) : '—'} de ${p.limite_mb} MB<div class="uso-barra"><i style="width:${pcu}%;${pcu >= 90 ? 'background:var(--perigo)' : ''}"></i></div></div>
       <div class="adm-campos">
         <div><label>Limite de slides</label><select data-campo="limite_mb">${lim.map(v => `<option value="${v}" ${v === p.limite_mb ? 'selected' : ''}>${v} MB</option>`).join('')}</select></div>
-        <div><label>Plano</label><select data-campo="plano">${['gratuito', 'pago', 'cortesia'].concat(['gratuito', 'pago', 'cortesia'].includes(p.plano) ? [] : [p.plano]).map(v => `<option ${v === p.plano ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+        <div><label>Plano</label><select data-campo="plano">${['gratuito', 'pago', 'cortesia'].concat(['gratuito', 'pago', 'cortesia'].includes(p.plano) ? [] : [p.plano]).map(v => `<option value="${esc(v)}" ${v === p.plano ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
       </div>
       ${eu ? '' : `<div class="adm-acoes">
         ${p.situacao !== 'aprovado' ? `<button class="btn verde" data-acao="aprovado">✓ ${p.situacao === 'bloqueado' ? 'Desbloquear' : 'Aprovar'}</button>` : ''}
