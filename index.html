@@ -373,7 +373,35 @@ li > .nota-linha{margin:.3em 0}
 .conta-linha b{text-align:right;word-break:break-all}
 .uso-barra{height:8px;border-radius:6px;background:var(--bg2);overflow:hidden;margin-top:6px}
 .uso-barra i{display:block;height:100%;background:var(--ouro)}
-.codigo-proj{font-family:Cinzel,serif;letter-spacing:.18em;color:var(--ouro);font-size:15px}
+.codigo-proj{font-family:'Source Sans 3',system-ui,sans-serif;font-weight:700;letter-spacing:.16em;color:var(--ouro);font-size:20px;white-space:nowrap}
+.copia{display:flex;align-items:center;gap:12px;margin-top:10px;padding:10px 12px;border:1px solid var(--linha);border-radius:12px;background:var(--bg2)}
+.copia>div{flex:1;min-width:0}
+.copia small{display:block;font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.copia b{display:block;font-size:14.5px;word-break:break-all;margin-top:2px;text-align:left}
+.copia .btn{padding:8px 12px;font-size:14px}
+.copia .btn.ok{background:#3CB371;border-color:#3CB371;color:#fff}
+/* administração */
+.badge-n{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--perigo);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.adm-resumo{max-width:1100px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.adm-resumo .caixa{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:14px 16px}
+.adm-resumo small{display:block;color:var(--txt2);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.adm-resumo b{font-size:24px;color:var(--ouro);font-family:Cinzel,serif}
+.adm-resumo .uso-barra{margin-top:8px}
+.adm-filtros{max-width:1100px;margin:0 auto 16px}
+.adm-lista{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.adm-cartao{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--sombra)}
+.adm-cartao.pendente{border-color:var(--t-amarelo)}
+.adm-cartao h3{font-family:Cinzel,serif;color:var(--ouro);font-size:17px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.adm-cartao .meta{font-size:14px;color:var(--txt2);overflow-wrap:anywhere}
+.selo{font-family:'Source Sans 3',sans-serif;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.selo.aprovado{background:rgba(60,179,113,.18);color:#3CB371}
+.selo.pendente{background:rgba(245,208,76,.2);color:var(--t-amarelo)}
+.selo.bloqueado{background:rgba(229,72,77,.18);color:var(--perigo)}
+.adm-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.adm-campos label{font-size:12px;color:var(--txt2);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.adm-campos select{padding:8px 10px;margin-top:4px}
+.adm-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.btn.verde{background:#3CB371;border-color:#3CB371;color:#fff}
 .sl-codigo{width:100%;font-size:12.5px;color:var(--txt2)}
 .sl-codigo b{color:var(--ouro);letter-spacing:.14em}
 </style>
@@ -424,6 +452,10 @@ li > .nota-linha{margin:.3em 0}
     </div>
     <span id="sinc" class="sinc"><i></i><span>—</span></span>
     <button class="icone" data-tema title="Modo claro/escuro"></button>
+    <button class="icone oculto" id="btn-admin" title="Administração" style="position:relative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span class="badge-n oculto" id="admin-badge"></span>
+    </button>
     <button class="icone" id="btn-conta" title="Minha conta">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
     </button>
@@ -439,6 +471,25 @@ li > .nota-linha{margin:.3em 0}
   <main class="corpo">
     <div class="barra-busca"><input id="busca" type="search" placeholder="Buscar sermão por título, culto ou texto…"></div>
     <div id="lista" class="lista"></div>
+  </main>
+</section>
+
+<!-- ===================== TELA: ADMINISTRAÇÃO ===================== -->
+<section id="admin" class="tela">
+  <header class="topo">
+    <button class="icone" id="adm-voltar" title="Voltar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="marca"><div><h1 style="font-size:20px">Administração</h1><span class="versao" data-versao></span></div></div>
+    <button class="icone" data-tema title="Modo claro/escuro"></button>
+    <button class="btn" id="adm-atualizar">Atualizar</button>
+  </header>
+  <main class="corpo">
+    <div class="adm-resumo" id="adm-resumo"></div>
+    <div class="seg adm-filtros" id="adm-filtros">
+      <button data-f="pendente">Pendentes</button><button data-f="aprovado">Aprovados</button><button data-f="bloqueado">Bloqueados</button><button data-f="todos">Todos</button>
+    </div>
+    <div class="adm-lista" id="adm-lista"></div>
   </main>
 </section>
 
@@ -623,7 +674,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.0.0';
+const VERSAO = '2.1.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1286,8 +1337,8 @@ function mostrarAguardando(){
   irPara('aguardando');
 }
 async function entrarNoApp(){
-  irPara('inicio'); mostrarCodigo();
-  await desenharLista(); sincronizar();
+  irPara('inicio'); mostrarCodigo(); mostrarBotaoAdmin();
+  await desenharLista(); sincronizar(); contarPendentes();
 }
 
 // confere na nuvem se a conta continua valendo (e se foi aprovada/bloqueada)
@@ -1305,7 +1356,7 @@ async function verificarConta(){
     salvarUsuario(p);
     if (outro || (p.situacao === 'aprovado') !== (antes.situacao === 'aprovado')) return location.reload();
     if (p.situacao !== 'aprovado') mostrarAguardando();
-    else mostrarCodigo();
+    else { mostrarCodigo(); mostrarBotaoAdmin(); contarPendentes(); }
   } catch (e){ console.error(e); }
   finally { verificando = false; }
 }
@@ -1394,9 +1445,19 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="conta-linha"><span>E-mail</span><b>${esc(u.email || '—')}</b></div>
     <div class="conta-linha"><span>Plano</span><b>${esc(u.plano || 'gratuito')}${u.admin ? ' · administrador' : ''}</b></div>
     <div class="conta-linha" style="display:block"><div style="display:flex;justify-content:space-between"><span>Espaço para slides</span><b id="conta-uso">${navigator.onLine ? 'calculando…' : 'sem internet'}</b></div><div class="uso-barra"><i id="conta-uso-barra" style="width:0"></i></div></div>
-    <div class="conta-linha" style="display:block"><span>Projeção</span><p class="dica" style="margin-top:6px">${$('#cfg-codigo').innerHTML}</p></div>
+    <div class="conta-linha" style="display:block"><span>Projeção (notebook do data-show)</span>
+      ${u.codigo ? `
+      <div class="copia"><div><small>Endereço do projetor</small><b>${esc(urlProjetor())}</b></div><button class="btn" data-copiar="${esc(urlProjetor())}">Copiar</button></div>
+      <div class="copia"><div><small>Código do projetor</small><b class="codigo-proj">${esc(u.codigo)}</b></div><button class="btn" data-copiar="${esc(u.codigo)}">Copiar</button></div>
+      <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(urlProjetor() + '?codigo=' + u.codigo)}</b></div><button class="btn" data-copiar="${esc(urlProjetor() + '?codigo=' + u.codigo)}">Copiar</button></div>
+      <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>` : '<p class="dica">—</p>'}
+    </div>
     <div class="acoes" style="margin-top:16px"><button class="btn perigo" id="conta-sair">Sair da conta</button><button class="btn prim" onclick="fecharModal()">Fechar</button></div>`);
   $('#conta-sair').onclick = () => { fecharModal(); sairDaConta(); };
+  $$('#modal-caixa [data-copiar]').forEach(b => b.onclick = async () => {
+    if (await copiar(b.dataset.copiar)){ b.textContent = '✓ Copiado'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('ok'); }, 2000); }
+    else aviso('Não consegui copiar. Toque e segure o texto para copiar.');
+  });
   if (navigator.onLine){
     const uso = await meuUso();
     const el = $('#conta-uso'); if (!el) return;
@@ -1407,6 +1468,109 @@ $('#btn-conta').addEventListener('click', async () => {
     if (pc >= 90) $('#conta-uso-barra').style.background = 'var(--perigo)';
   }
 });
+
+/* copiar para a área de transferência (com plano B para aparelhos antigos) */
+async function copiar(txt){
+  try { await navigator.clipboard.writeText(txt); return true; } catch {}
+  try {
+    const t = document.createElement('textarea'); t.value = txt; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(t); t.select(); t.setSelectionRange(0, txt.length);
+    const ok = document.execCommand('copy'); t.remove(); return ok;
+  } catch { return false; }
+}
+
+/* ===================== ADMINISTRAÇÃO (só para o administrador) ===================== */
+const LIMITE_PLANO_MB = 1024;            // plano gratuito do Supabase: 1 GB de arquivos para todos
+let admPerfis = [], admFiltro = 'pendente';
+function mostrarBotaoAdmin(){ $('#btn-admin').classList.toggle('oculto', !(USUARIO && USUARIO.admin)); }
+async function contarPendentes(){
+  if (!USUARIO || !USUARIO.admin || !navigator.onLine) return;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/perfis?situacao=eq.pendente&select=id`, { headers: await cab() });
+    if (!r.ok) return;
+    const n = (await r.json()).length, b = $('#admin-badge');
+    b.textContent = n; b.classList.toggle('oculto', !n);
+  } catch {}
+}
+async function carregarAdmin(){
+  $('#adm-lista').innerHTML = '<div class="vazio" style="grid-column:1/-1">Carregando…</div>';
+  if (!navigator.onLine){ $('#adm-lista').innerHTML = '<div class="vazio" style="grid-column:1/-1">A administração precisa de internet.</div>'; return; }
+  try {
+    const h = await cab();
+    const [rp, ru] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/perfis?select=*&order=criado_em.desc`, { headers: h }),
+      fetch(`${SB_URL}/rest/v1/rpc/admin_uso`, { method: 'POST', headers: h, body: '{}' })
+    ]);
+    if (!rp.ok) throw new Error('perfis ' + rp.status);
+    const uso = ru.ok ? Object.fromEntries((await ru.json()).map(x => [x.id, x])) : {};
+    if (!ru.ok) aviso('Falta rodar o schema-v2.1.sql no Supabase (espaço por pastor).', 6000);
+    admPerfis = (await rp.json()).map(p => ({ ...p, uso: uso[p.id] || null }));
+    desenharAdmin(); contarPendentes();
+  } catch (e){ console.error(e); $('#adm-lista').innerHTML = '<div class="vazio" style="grid-column:1/-1">Não consegui carregar os pastores. Tente “Atualizar”.</div>'; }
+}
+const mb = b => (b / 1048576).toFixed(1);
+function desenharAdmin(){
+  const n = s => admPerfis.filter(p => p.situacao === s).length;
+  const totalB = admPerfis.reduce((t, p) => t + (p.uso ? +p.uso.usado_bytes : 0), 0);
+  const prometido = admPerfis.filter(p => p.situacao !== 'bloqueado').reduce((t, p) => t + p.limite_mb, 0);
+  const pc = Math.min(100, totalB / 1048576 / LIMITE_PLANO_MB * 100);
+  $('#adm-resumo').innerHTML = `
+    <div class="caixa"><small>Pastores</small><b>${admPerfis.length}</b></div>
+    <div class="caixa"><small>Aguardando aprovação</small><b style="color:${n('pendente') ? 'var(--t-amarelo)' : 'var(--ouro)'}">${n('pendente')}</b></div>
+    <div class="caixa"><small>Espaço usado (todos)</small><b>${mb(totalB)} MB</b><span class="dica"> de ${LIMITE_PLANO_MB} MB do plano</span><div class="uso-barra"><i style="width:${pc}%;${pc > 85 ? 'background:var(--perigo)' : ''}"></i></div></div>
+    <div class="caixa"><small>Limites concedidos</small><b>${prometido} MB</b><span class="dica">${prometido > LIMITE_PLANO_MB ? ' · passa do plano (normal: nem todos usam tudo)' : ''}</span></div>`;
+  $$('#adm-filtros button').forEach(b => { const c = b.dataset.f === 'todos' ? admPerfis.length : n(b.dataset.f); b.classList.toggle('on', b.dataset.f === admFiltro); b.textContent = b.textContent.replace(/\s\(\d+\)$/, '') + ` (${c})`; });
+  const lista = admPerfis.filter(p => admFiltro === 'todos' || p.situacao === admFiltro);
+  const LIMITES = [50, 100, 200, 300, 500, 1000];
+  if (!lista.length){ $('#adm-lista').innerHTML = `<div class="vazio" style="grid-column:1/-1">${admFiltro === 'pendente' ? 'Nenhum pastor aguardando aprovação.' : 'Ninguém aqui.'}</div>`; return; }
+  $('#adm-lista').innerHTML = lista.map(p => {
+    const eu = p.id === USUARIO.id, u = p.uso;
+    const pcu = u ? Math.min(100, u.usado_bytes / 1048576 / p.limite_mb * 100) : 0;
+    const lim = LIMITES.includes(p.limite_mb) ? LIMITES : [...LIMITES, p.limite_mb].sort((a, b) => a - b);
+    return `<div class="adm-cartao ${p.situacao}" data-id="${p.id}">
+      <h3><span>${esc(p.nome || '(sem nome)')}${eu ? ' <span class="dica" style="font-family:inherit">· você</span>' : ''}</span><span class="selo ${p.situacao}">${p.situacao}</span></h3>
+      <div class="meta">${esc(p.igreja || 'Igreja não informada')}</div>
+      <div class="meta">${esc(p.email || '')}</div>
+      <div class="meta">Cadastro em ${fmtData(String(p.criado_em).slice(0, 10))}${u && u.ultimo_acesso ? ' · último acesso ' + fmtData(String(u.ultimo_acesso).slice(0, 10)) : ''}${u ? ' · ' + u.sermoes + ' sermão(ões)' : ''}</div>
+      <div class="meta">Slides: ${u ? mb(u.usado_bytes) : '—'} de ${p.limite_mb} MB<div class="uso-barra"><i style="width:${pcu}%;${pcu >= 90 ? 'background:var(--perigo)' : ''}"></i></div></div>
+      <div class="adm-campos">
+        <div><label>Limite de slides</label><select data-campo="limite_mb">${lim.map(v => `<option value="${v}" ${v === p.limite_mb ? 'selected' : ''}>${v} MB</option>`).join('')}</select></div>
+        <div><label>Plano</label><select data-campo="plano">${['gratuito', 'pago', 'cortesia'].concat(['gratuito', 'pago', 'cortesia'].includes(p.plano) ? [] : [p.plano]).map(v => `<option ${v === p.plano ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></div>
+      </div>
+      ${eu ? '' : `<div class="adm-acoes">
+        ${p.situacao !== 'aprovado' ? `<button class="btn verde" data-acao="aprovado">✓ ${p.situacao === 'bloqueado' ? 'Desbloquear' : 'Aprovar'}</button>` : ''}
+        ${p.situacao !== 'bloqueado' ? `<button class="btn perigo" data-acao="bloqueado">Bloquear</button>` : ''}
+      </div>`}
+    </div>`;
+  }).join('');
+}
+async function alterarPerfil(id, campos){
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/perfis?id=eq.${id}`, { method: 'PATCH', headers: { ...await cab(), Prefer: 'return=representation' }, body: JSON.stringify({ ...campos, atualizado_em: agora() }) });
+    if (!r.ok) throw new Error(r.status + ' ' + await r.text());
+    const l = await r.json(); if (!l.length) throw new Error('sem permissão');
+    const i = admPerfis.findIndex(p => p.id === id); admPerfis[i] = { ...admPerfis[i], ...l[0] };
+    return true;
+  } catch (e){ console.error(e); aviso('Não consegui salvar. Verifique a internet.'); return false; }
+}
+$('#adm-lista').addEventListener('click', async e => {
+  const b = e.target.closest('[data-acao]'); if (!b) return;
+  const id = b.closest('[data-id]').dataset.id, p = admPerfis.find(x => x.id === id), nova = b.dataset.acao;
+  if (nova === 'bloqueado' && !confirm(`Bloquear ${p.nome || p.email}?\n\nEle não conseguirá mais abrir nem sincronizar os sermões. Os dados dele não são apagados e você pode desbloquear depois.`)) return;
+  b.disabled = true;
+  if (await alterarPerfil(id, { situacao: nova })){ aviso(nova === 'aprovado' ? 'Pastor aprovado' : 'Pastor bloqueado'); desenharAdmin(); contarPendentes(); }
+  else b.disabled = false;
+});
+$('#adm-lista').addEventListener('change', async e => {
+  const sel = e.target.closest('[data-campo]'); if (!sel) return;
+  const id = sel.closest('[data-id]').dataset.id, campo = sel.dataset.campo;
+  const valor = campo === 'limite_mb' ? +sel.value : sel.value;
+  if (await alterarPerfil(id, { [campo]: valor })){ aviso('Alteração salva'); desenharAdmin(); }
+});
+$$('#adm-filtros button').forEach(b => b.addEventListener('click', () => { admFiltro = b.dataset.f; desenharAdmin(); }));
+$('#btn-admin').addEventListener('click', () => { irPara('admin'); carregarAdmin(); });
+$('#adm-atualizar').addEventListener('click', carregarAdmin);
+$('#adm-voltar').addEventListener('click', () => { irPara('inicio'); desenharLista(); });
 
 /* ===================== PÚLPITO ===================== */
 let pAtual = null, topicos = [], textoAtivo = 0;
