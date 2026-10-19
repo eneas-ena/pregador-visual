@@ -64,11 +64,15 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--ouro);outline-of
 .corpo{flex:1;overflow:auto;padding:22px calc(24px + env(safe-area-inset-right)) 40px calc(24px + env(safe-area-inset-left));-webkit-overflow-scrolling:touch}
 .barra-busca{display:flex;gap:12px;margin-bottom:18px;max-width:1100px;margin-inline:auto}
 .barra-busca input{flex:1}
-.lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;max-width:1100px;margin:0 auto}
+.lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));grid-auto-rows:1fr;gap:14px;max-width:1100px;margin:0 auto}
 .cartao{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sombra)}
-.cartao h3{font-family:Cinzel,serif;font-size:17px;color:var(--ouro);line-height:1.3}
+.cartao h3{font-family:Cinzel,serif;font-size:17px;color:var(--ouro);line-height:1.3;min-height:2.6em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cartao .info{display:flex;flex-direction:column;gap:5px;flex:1}
+.cartao .info .meta{line-height:1.35}
+.cartao .acoes .btn.ico{width:44px;padding:10px 0;justify-content:center;flex-shrink:0}
+.cartao .acoes .btn.ico svg{width:18px;height:18px}
 .cartao .meta{font-size:14px;color:var(--txt2)}
-.cartao .acoes{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.cartao .acoes{display:flex;gap:8px;margin-top:auto;flex-wrap:nowrap;align-items:center}
 .vazio{text-align:center;color:var(--txt2);padding:60px 20px;max-width:520px;margin:0 auto;line-height:1.6}
 .vazio img{width:120px;border-radius:24px;margin-bottom:16px}
 
@@ -752,7 +756,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.5.0';
+const VERSAO = '2.5.1';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1066,18 +1070,20 @@ async function desenharLista(){
   }
   el.innerHTML = lista.map(s => `
     <div class="cartao">
-      <h3>${esc(s.titulo)}</h3>
-      <div class="meta">${fmtData(s.data_pregacao)}${s.culto ? ' · ' + esc(s.culto) : ''}${(s.textos || []).length ? ' · ' + s.textos.length + ' texto(s)' : ''}${s._pendente ? ' · <span style="color:var(--t-amarelo)">envio pendente</span>' : ''}</div>
-      ${(() => { const f = refsSemTexto(s.conteudo_html, s.textos || []); return f.length ? `<div class="meta alerta">⚠ Falta o texto de: ${f.slice(0, 4).map(a => esc(a.bruto)).join(', ')}${f.length > 4 ? ' e mais ' + (f.length - 4) : ''}</div>` : ''; })()}
-      ${(s.slides || []).length ? (faltamAqui(s) ? `<div class="meta alerta">⚠ ${faltamAqui(s)} slide(s) ainda não estão neste aparelho. Abra o app com internet antes do culto.</div>` : `<div class="meta pronto">✓ Pronto para pregar sem internet</div>`) : ''}
-      ${hist[s.id] ? `<div class="meta pregado">Pregado ${hist[s.id].length}× · último em ${fmtData(hist[s.id][0].data)}${hist[s.id][0].culto ? ' (' + esc(hist[s.id][0].culto) + ')' : ''}${hist[s.id][0].local ? ' · ' + esc(hist[s.id][0].local) : ''}</div>` : ''}
+      <h3 title="${esc(s.titulo)}">${esc(s.titulo)}</h3>
+      <div class="info">
+        <div class="meta">${fmtData(s.data_pregacao)}${s.culto ? ' · ' + esc(s.culto) : ''}${(s.textos || []).length ? ' · ' + s.textos.length + ' texto(s)' : ''}${s._pendente ? ' · <span style="color:var(--t-amarelo)">envio pendente</span>' : ''}</div>
+        ${(() => { const f = refsSemTexto(s.conteudo_html, s.textos || []); return f.length ? `<div class="meta alerta">⚠ Falta o texto de: ${f.slice(0, 4).map(a => esc(a.bruto)).join(', ')}${f.length > 4 ? ' e mais ' + (f.length - 4) : ''}</div>` : ''; })()}
+        ${(s.slides || []).length ? (faltamAqui(s) ? `<div class="meta alerta">⚠ ${faltamAqui(s)} slide(s) ainda não estão neste aparelho. Abra o app com internet antes do culto.</div>` : `<div class="meta pronto">✓ Pronto para pregar sem internet</div>`) : ''}
+        ${hist[s.id] ? `<div class="meta pregado">Pregado ${hist[s.id].length}× · último em ${fmtData(hist[s.id][0].data)}${hist[s.id][0].culto ? ' (' + esc(hist[s.id][0].culto) + ')' : ''}${hist[s.id][0].local ? ' · ' + esc(hist[s.id][0].local) : ''}</div>` : ''}
+      </div>
       <div class="acoes">
         <button class="btn prim" data-pregar="${s.id}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Pregar
         </button>
         <button class="btn" data-editar="${s.id}">Editar</button>
-        ${hist[s.id] ? `<button class="btn" data-hist="${s.id}">Histórico</button>` : ''}
-        <button class="btn" data-mais="${s.id}" title="Imprimir, compartilhar, salvar cópia ou arquivar" style="margin-left:auto">⋯</button>
+        ${hist[s.id] ? `<button class="btn ico" data-hist="${s.id}" title="Histórico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></button>` : ''}
+        <button class="btn ico" data-mais="${s.id}" title="Imprimir, compartilhar, salvar cópia ou arquivar" style="margin-left:auto">⋯</button>
       </div>
     </div>`).join('');
 }
