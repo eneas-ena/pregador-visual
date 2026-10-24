@@ -1,5 +1,5 @@
 // Pregador Visual — service worker (funciona sem internet)
-const VERSAO = '2.5.1';
+const VERSAO = '2.5.2';
 // nome diferente do Pregador pessoal ("pregador-…"), para um nunca apagar o cache do outro
 const CACHE = 'pvisual-' + VERSAO;
 const ARQUIVOS = [

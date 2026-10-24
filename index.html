@@ -361,14 +361,7 @@ li > .nota-linha{margin:.3em 0}
 @media (max-width:900px){ .p-cab-tit .p-titulo{display:none} }
 .p-base-mob{display:none!important}
 @media (max-width:600px){ #p-base{display:none!important} .p-base-mob:not(.oculto){display:inline-flex!important;margin-left:10px;font-size:12.5px;padding:2px 8px;text-transform:none;letter-spacing:0} }
-/* iPadOS: o sistema esmaece a faixa logo abaixo da barra de status no app instalado.
-   Deixamos essa faixa vazia para que título e relógios fiquem abaixo dela. */
-@media (display-mode: standalone){
-  .topo{padding-top:calc(env(safe-area-inset-top, 0px) + 34px)!important}
-  .p-topo{padding-top:calc(env(safe-area-inset-top, 0px) + 30px)!important}
-  .painel{padding-top:calc(env(safe-area-inset-top, 0px) + 40px)!important}
-  .caixa-texto{top:calc(env(safe-area-inset-top, 0px) + 120px)}
-}
+/* (v2.5.2) sem faixa extra no topo: o esmaecimento do iPadOS pode ser desligado nos Ajustes do iPad */
 
 /* ===================== ENTRAR / AGUARDANDO APROVAÇÃO ===================== */
 .acesso{align-items:center;justify-content:center;overflow:auto;padding:calc(24px + env(safe-area-inset-top)) 16px 24px;background:var(--bg)}
@@ -756,7 +749,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.5.1';
+const VERSAO = '2.5.2';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
