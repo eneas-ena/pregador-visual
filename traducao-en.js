@@ -170,6 +170,12 @@ exato: {
   'A tela fica acesa enquanto o sermão estiver aberto.': 'The screen stays on while the sermon is open.',
   'Este aparelho não permite manter a tela acesa pelo app. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca” antes de pregar.': 'This device does not let the app keep the screen on. In Settings › Display & Brightness › Auto-Lock, choose “Never” before preaching.',
   'Não consegui manter a tela acesa. Em Ajustes › Tela e Brilho › Bloqueio Automático, escolha “Nunca”.': 'Could not keep the screen on. In Settings › Display & Brightness › Auto-Lock, choose “Never”.',
+  '🔄 Gerar novo código': '🔄 Generate a new code',
+  'Pregou em outra igreja? Gere um código novo: o antigo deixa de funcionar e ninguém de lá consegue mais acompanhar seus slides.': 'Preached at another church? Generate a new code: the old one stops working and no one there can follow your slides anymore.',
+  'Gerar um novo código do projetor?': 'Generate a new projector code?',
+  'O código atual deixa de funcionar na hora. No notebook do data-show da sua igreja, você vai precisar abrir o endereço novo (ou digitar o código novo).': 'The current code stops working right away. On your church projector computer, you will need to open the new address (or type the new code).',
+  'Para gerar um código novo é preciso internet.': 'You need internet to generate a new code.', 'Falta rodar o schema-v2.6.sql no Supabase.': 'The schema-v2.6.sql still needs to be run in Supabase.',
+  'Não consegui gerar o código. Verifique a internet.': 'Could not generate the code. Check the internet.',
   'Ajuda': 'Help', 'Ajuda: como usar o app': 'Help: how to use the app', '✓ Pronto para pregar sem internet': '✓ Ready to preach offline',
   'Sem internet no iPad · a projeção volta quando a conexão voltar': 'Offline on the iPad · projection resumes when the connection returns',
   'Sermão': 'Sermon', 'Textos bíblicos': 'Bible passages', 'Pregador Visual · página': 'Pregador Visual · page', '· Texto:': '· Passage:'
@@ -224,6 +230,7 @@ padroes: [
   [/^(\d+) slide\(s\)$/, '$1 slide(s)'],
   [/^⚠ (\d+) slide\(s\) ainda não estão neste aparelho\. Abra o app com internet antes do culto\.$/, '⚠ $1 slide(s) are not on this device yet. Open the app online before the service.'],
   [/^Guardando slides no aparelho (\d+)\/(\d+)…$/, 'Saving slides to the device $1/$2…'],
+  [/^Código novo: (\w+)$/, 'New code: $1'],
   [/^(gratuito|pago|cortesia)( · administrador)?$/, (m, pl, adm) => ({ gratuito: 'free', pago: 'paid', cortesia: 'courtesy' }[pl]) + (adm ? ' · administrator' : '')]
 ]
 };

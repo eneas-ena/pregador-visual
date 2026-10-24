@@ -47,6 +47,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .erro{color:#E5484D;font-size:16px;min-height:1em}
 .cod-atual{color:var(--txt2);font-size:16px}.cod-atual b{color:var(--ouro);letter-spacing:.2em}
 .link{color:var(--ouro);text-decoration:underline;font-size:15px}
+.dica-cod{color:var(--txt2);font-size:15px;max-width:520px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -66,6 +67,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     <span class="estado" id="estado"><i></i><span>Conectando…</span></span>
     <p>Deixe esta tela aberta no computador do data-show.<br>Abra o sermão no Pregador Visual e toque num slide: ele aparece aqui.</p>
     <span class="cod-atual">Código: <b id="cod-atual"></b> · <a href="#" class="link" id="trocar">trocar</a></span>
+    <span class="dica-cod oculto" id="dica-cod">Nada chegou ainda? Se o pastor gerou um código novo, toque em “trocar” e digite o novo código.</span>
     <button class="botao prim" id="cheia" type="button">Tela cheia</button>
   </div>
   <span class="versao" data-versao></span>
@@ -79,7 +81,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 </div>
 
 <script>
-const VERSAO = '2.5.2';
+const VERSAO = '2.6.0';
 const { SB_URL, SB_KEY } = window.PV_CONFIG;
 const $ = s => document.querySelector(s);
 document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
@@ -95,7 +97,8 @@ const EN = {
   'O código tem 6 letras/números. Confira no iPad.': 'The code has 6 letters/numbers. Check it on the iPad.',
   'Aguardando o iPad…': 'Waiting for the iPad…', 'iPad conectado': 'iPad connected', 'Sem conexão com a internet': 'No internet connection',
   'iPad desconectado · o último slide continua na tela': 'iPad disconnected · the last slide stays on screen',
-  'Fundo claro/escuro': 'Light/dark background', 'Tela cheia ': 'Full screen'
+  'Fundo claro/escuro': 'Light/dark background',
+  'Nada chegou ainda? Se o pastor gerou um código novo, toque em “trocar” e digite o novo código.': 'Nothing yet? If the pastor generated a new code, tap “change” and type the new code.', 'Tela cheia ': 'Full screen'
 };
 const T = s => IDIOMA === 'en' && EN[s] ? EN[s] : s;
 if (IDIOMA === 'en'){
@@ -201,7 +204,9 @@ function conectar(codigo){
     else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') estado('', 'Sem conexão com a internet');
   });
   // se o iPad sumir por um tempo, volta a pedir o estado (o slide continua na tela)
+  const inicioConexao = Date.now();
   vigia = setInterval(() => {
+    $('#dica-cod').classList.toggle('oculto', !(ultimoEstado === 0 && Date.now() - inicioConexao > 45000));
     if (canal && Date.now() - ultimoEstado > 15000){
       estado('meio', ultimoEstado ? 'iPad desconectado · o último slide continua na tela' : 'Aguardando o iPad…');
       canal.send({ type: 'broadcast', event: 'pedido', payload: {} }).catch(() => {});

@@ -735,7 +735,7 @@ li > .nota-linha{margin:.3em 0}
   <div class="opc"><label class="rot">Controle de apresentação</label><p class="dica">Avançar: próximo tópico · Voltar: tópico anterior · Botão do quadrado (tela preta): inicia/pausa o cronômetro.</p>
     <button class="btn" id="ensinar-botao" style="width:100%;justify-content:center;margin-top:10px">Ensinar o botão do cronômetro</button>
     <p class="dica" id="tecla-info"></p></div>
-  <div class="opc"><label class="rot">Projeção (data-show)</label><p class="dica" id="cfg-codigo">—</p></div>
+  <div class="opc"><label class="rot">Projeção (data-show)</label><div id="cfg-codigo">—</div></div>
   <div class="opc"><label class="rot">Tela</label><p class="dica" id="tela-status">—</p></div>
   <p class="versao" data-versao></p>
 </aside>
@@ -749,7 +749,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.5.2';
+const VERSAO = '2.6.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1615,11 +1615,51 @@ $('#ag-sair').addEventListener('click', sairDaConta);
 
 // código que o notebook do data-show pede para receber os slides deste pastor
 const urlProjetor = () => new URL('projetor.html', location.href).href;
+function htmlProjecao(completo){
+  const c = USUARIO && USUARIO.codigo;
+  if (!c) return '<p class="dica">—</p>';
+  const comCodigo = urlProjetor() + '?codigo=' + c;
+  return `
+    ${completo ? `<div class="copia"><div><small>Endereço do projetor</small><b>${esc(urlProjetor())}</b></div><button class="btn" data-copiar="${esc(urlProjetor())}">Copiar</button></div>` : ''}
+    <div class="copia"><div><small>Código do projetor</small><b class="codigo-proj">${esc(c)}</b></div><button class="btn" data-copiar="${esc(c)}">Copiar</button></div>
+    <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(comCodigo)}</b></div><button class="btn" data-copiar="${esc(comCodigo)}">Copiar</button></div>
+    <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>
+    <button class="btn" data-novo-codigo style="margin-top:10px;width:100%;justify-content:center">🔄 Gerar novo código</button>
+    <p class="dica" style="margin-top:6px">Pregou em outra igreja? Gere um código novo: o antigo deixa de funcionar e ninguém de lá consegue mais acompanhar seus slides.</p>`;
+}
 function mostrarCodigo(){
   const c = USUARIO && USUARIO.codigo;
   $('#sl-codigo').innerHTML = c ? `Código do projetor: <b>${esc(c)}</b>` : '';
-  $('#cfg-codigo').innerHTML = c ? `No notebook do data-show, abra <b>${esc(urlProjetor().replace(/^https?:\/\//, ''))}</b> e digite o código <b class="codigo-proj">${esc(c)}</b>.` : '—';
+  $('#cfg-codigo').innerHTML = htmlProjecao(false);
 }
+async function gerarNovoCodigo(){
+  if (!navigator.onLine) return aviso('Para gerar um código novo é preciso internet.');
+  if (!confirm('Gerar um novo código do projetor?\n\nO código atual deixa de funcionar na hora. No notebook do data-show da sua igreja, você vai precisar abrir o endereço novo (ou digitar o código novo).')) return;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/novo_codigo_projecao`, { method: 'POST', headers: await cab(), body: '{}' });
+    if (!r.ok){ const t = await r.text(); throw new Error(r.status + ' ' + t); }
+    const novo = await r.json();
+    USUARIO.codigo = novo; try { localStorage.setItem('pv.usuario', JSON.stringify(USUARIO)); } catch {}
+    if (canal){ try { sb().removeChannel(canal); } catch {} canal = null; canalOk = false; if (slidesP.length) conectarProjetor(); }
+    mostrarCodigo();
+    const modalConta = $('#conta-sair');
+    if (modalConta){ fecharModal(); $('#btn-conta').click(); }
+    aviso('Código novo: ' + novo, 5000);
+  } catch (e){
+    console.error(e);
+    aviso(/404|PGRST202|novo_codigo_projecao/.test(String(e.message)) ? 'Falta rodar o schema-v2.6.sql no Supabase.' : 'Não consegui gerar o código. Verifique a internet.', 6000);
+  }
+}
+// botões de copiar e de novo código (valem em qualquer tela)
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-copiar]');
+  if (b){
+    if (await copiar(b.dataset.copiar)){ b.textContent = '✓ Copiado'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('ok'); }, 2000); }
+    else aviso('Não consegui copiar. Toque e segure o texto para copiar.');
+    return;
+  }
+  if (e.target.closest('[data-novo-codigo]')) gerarNovoCodigo();
+});
 
 $('#btn-conta').addEventListener('click', async () => {
   const u = USUARIO || {};
@@ -1630,13 +1670,7 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="conta-linha"><span>E-mail</span><b>${esc(u.email || '—')}</b></div>
     <div class="conta-linha"><span>Plano</span><b>${esc(u.plano || 'gratuito')}${u.admin ? ' · administrador' : ''}</b></div>
     <div class="conta-linha" style="display:block"><div style="display:flex;justify-content:space-between"><span>Espaço para slides</span><b id="conta-uso">${navigator.onLine ? 'calculando…' : 'sem internet'}</b></div><div class="uso-barra"><i id="conta-uso-barra" style="width:0"></i></div></div>
-    <div class="conta-linha" style="display:block"><span>Projeção (notebook do data-show)</span>
-      ${u.codigo ? `
-      <div class="copia"><div><small>Endereço do projetor</small><b>${esc(urlProjetor())}</b></div><button class="btn" data-copiar="${esc(urlProjetor())}">Copiar</button></div>
-      <div class="copia"><div><small>Código do projetor</small><b class="codigo-proj">${esc(u.codigo)}</b></div><button class="btn" data-copiar="${esc(u.codigo)}">Copiar</button></div>
-      <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(urlProjetor() + '?codigo=' + u.codigo)}</b></div><button class="btn" data-copiar="${esc(urlProjetor() + '?codigo=' + u.codigo)}">Copiar</button></div>
-      <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>` : '<p class="dica">—</p>'}
-    </div>
+    <div class="conta-linha" style="display:block"><span>Projeção (notebook do data-show)</span>${htmlProjecao(true)}</div>
     <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
       <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>
     <div class="conta-linha" style="display:block"><span>Backup e restauração</span>
@@ -1652,10 +1686,6 @@ $('#btn-conta').addEventListener('click', async () => {
   $('#bk-completo').onclick = () => { fecharModal(); fazerBackup(true); };
   $('#bk-leve').onclick = () => { fecharModal(); fazerBackup(false); };
   $('#bk-restaurar').onclick = () => { fecharModal(); $('#arq-restaurar').click(); };
-  $$('#modal-caixa [data-copiar]').forEach(b => b.onclick = async () => {
-    if (await copiar(b.dataset.copiar)){ b.textContent = '✓ Copiado'; b.classList.add('ok'); setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('ok'); }, 2000); }
-    else aviso('Não consegui copiar. Toque e segure o texto para copiar.');
-  });
   if (navigator.onLine){
     const uso = await meuUso();
     const el = $('#conta-uso'); if (!el) return;
