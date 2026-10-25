@@ -298,6 +298,18 @@ mark.mk-vermelho{background:rgba(229,72,77,.40)} :root[data-theme="light"] mark.
 li > .nota-linha{margin:.3em 0}
 #balao{position:fixed;z-index:60;max-width:min(460px,86vw);background:var(--card);color:var(--txt);border:1.5px solid var(--t-laranja);border-radius:12px;box-shadow:var(--sombra);padding:12px 16px;font-size:20px;line-height:1.4;font-style:italic}
 .barra-marca[data-f="nota"] .cores, .barra-marca[data-f="nota"] #mk-selecao{display:none}
+.barra-marca[data-f="slide"] .cores, .barra-marca[data-f="slide"] #mk-selecao{display:none}
+.slide-mk{display:inline-flex;align-items:center;gap:2px;font-family:'Source Sans 3',system-ui,sans-serif;font-style:normal;font-weight:700;font-size:.62em;line-height:1;padding:.2em .45em;margin:0 .2em;border-radius:6px;border:1.5px solid var(--ouro);color:var(--ouro);vertical-align:.18em;cursor:pointer;-webkit-user-select:none;user-select:none;white-space:nowrap}
+.slide-mk::before{content:'▣ ' attr(data-slide)}
+.slide-mk.no-ar{background:var(--ouro);color:#0F1B33}
+.slide-mk.invalida{opacity:.45;border-style:dashed}
+.pick-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:60vh;overflow:auto;padding:2px}
+.pick-mini{position:relative;border:2px solid var(--linha);border-radius:10px;overflow:hidden;background:#000;padding:0}
+.pick-mini img{display:block;width:100%;aspect-ratio:16/9;object-fit:contain}
+.pick-mini span{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px}
+.pick-mini.atual{border-color:var(--ouro);box-shadow:0 0 0 2px var(--ouro)}
+.sl-modo{width:100%;margin-top:2px}
+.sl-auto-info{width:100%;font-size:12.5px;color:var(--txt2);line-height:1.4}
 .modal textarea{min-height:110px;resize:vertical;line-height:1.45;margin-bottom:14px}
 #ensinar-botao.ouvindo{background:var(--ouro);color:#0F1B33}
 /* slides */
@@ -445,6 +457,7 @@ li > .nota-linha{margin:.3em 0}
   .imp-texto b{color:#7D6310;display:block;margin-bottom:2pt}
   .imp-texto div{white-space:pre-wrap}
   .imp-rodape{margin-top:20pt;font-size:9pt;color:#8A93A8;text-align:center}
+  .imp-slide{font-size:9pt;font-weight:700;color:#9A7B12;border:1pt solid #C9A227;border-radius:3pt;padding:0 3pt;margin:0 2pt}
 }
 .menu-opcoes .btn{flex-direction:column;align-items:flex-start;white-space:normal;text-align:left;gap:3px;padding:12px 14px;width:100%}
 .menu-opcoes .btn span{font-weight:400;font-size:13.5px;color:var(--txt2);line-height:1.4}
@@ -680,6 +693,8 @@ li > .nota-linha{margin:.3em 0}
         <button class="icone" id="sl-seg" title="Próximo slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
         <button class="btn" id="sl-preta">Tela preta</button>
       </div>
+      <div class="seg sl-modo" id="sl-modo"><button data-m="manual">Manual</button><button data-m="auto">Automático pelas marcações</button></div>
+      <span class="sl-auto-info" id="sl-auto-info"></span>
     </div>
     <div class="sl-grade" id="sl-grade"></div>
   </div>
@@ -689,6 +704,7 @@ li > .nota-linha{margin:.3em 0}
       <button data-f="letra" title="Cor da letra"><b class="amostra-a">A</b> Cor da letra</button>
       <button data-f="sub" title="Sublinhado"><u class="amostra-u">S</u> Sublinhar</button>
       <button data-f="nota" title="Nota de púlpito">📌 Nota</button>
+      <button data-f="slide" title="Marcar slide no texto">▣ Slide</button>
       <button data-f="texto" title="Corrigir o texto">✏️ Texto</button>
     </div>
     <div class="cores">
@@ -749,7 +765,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.6.0';
+const VERSAO = '2.7.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1219,6 +1235,7 @@ function ajustarHtml(html){
       const h = d.createElement('h1'); h.textContent = primeiro.textContent; primeiro.replaceWith(h);
     }
   }
+  converterMarcasSlide(raiz);
   return raiz.innerHTML;
 }
 function contarTopicos(html){
@@ -1252,7 +1269,7 @@ $('#ed-corrigir').addEventListener('click', () => {
   const prev = $('#ed-previa');
   if (prev.isContentEditable){ sairCorrecaoEditor(true); aviso('Correção guardada. Toque em Salvar para gravar.'); return; }
   edEditado = false;
-  prev.querySelectorAll('.nota').forEach(n => n.contentEditable = 'false');
+  prev.querySelectorAll('.nota, .slide-mk').forEach(n => n.contentEditable = 'false');
   prev.contentEditable = 'true'; prev.classList.add('editando');
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
   $('#ed-corrigir').classList.add('on'); $('#ed-corrigir').textContent = '✓ Concluir correção';
@@ -1919,6 +1936,7 @@ function htmlParaImprimir(html, op, titulo){
   const d = new DOMParser().parseFromString('<div id="r">' + (html || '') + '</div>', 'text/html'), r = d.getElementById('r');
   tirarTituloRepetido(r, titulo);
   r.querySelectorAll('.gerado, .ref-link-x').forEach(x => x.remove());
+  r.querySelectorAll('span.slide-mk').forEach(m => { if (op.slides){ const x = d.createElement('span'); x.className = 'imp-slide'; x.textContent = '[slide ' + m.dataset.slide + ']'; m.replaceWith(x); } else m.remove(); });
   r.querySelectorAll('.ref-link').forEach(x => x.replaceWith(...x.childNodes));
   if (!op.marcas) r.querySelectorAll('mark, span.fc, span.sb').forEach(x => x.replaceWith(...x.childNodes));
   // notas: viram uma linha logo abaixo do parágrafo (como no púlpito) ou somem
@@ -1979,6 +1997,7 @@ async function gerarDocx(s, op){
       const t = n.tagName.toLowerCase(), e = { ...est };
       if (t === 'br'){ out.push(new TextRun({ break: 1 })); return; }
       if (n.matches('span.nota')){ if (op.notas && n.dataset.nota) notas.push(n.dataset.nota); return; }
+      if (n.matches('span.slide-mk')){ if (op.slides) out.push(new TextRun({ text: ` [slide ${n.dataset.slide}] `, bold: true, color: '9A7B12', size: 18 })); return; }
       if (t === 'strong' || t === 'b') e.bold = true;
       if (t === 'em' || t === 'i') e.italics = true;
       if (t === 'u') e.underline = {};
@@ -2063,7 +2082,7 @@ async function gerarDocx(s, op){
   return Packer.toBlob(doc);
 }
 
-const OP_IMP_PADRAO = { marcas: true, notas: true, textos: true };
+const OP_IMP_PADRAO = { marcas: true, notas: true, textos: true, slides: false };
 function menuImprimir(id){
   dbPegar('sermoes', id).then(s => {
     if (!s) return;
@@ -2075,12 +2094,13 @@ function menuImprimir(id){
         <label><input type="checkbox" id="io-marcas" ${op.marcas ? 'checked' : ''}> Manter realces, cores e sublinhados</label>
         <label><input type="checkbox" id="io-notas" ${op.notas ? 'checked' : ''}> Incluir as notas de púlpito 📌</label>
         <label><input type="checkbox" id="io-textos" ${op.textos ? 'checked' : ''}> Incluir os textos bíblicos no final</label>
+        <label><input type="checkbox" id="io-slides" ${op.slides ? 'checked' : ''}> Incluir as marcações de slide ▣</label>
       </div>
       <div class="menu-opcoes">
         <button class="btn" id="io-pdf"><b>🖨 Imprimir ou salvar em PDF</b><span>${ehIOS ? 'Abre a impressão do iPad/iPhone. Para PDF, toque no botão de compartilhar da tela de impressão.' : 'Abre a impressão. Para PDF, escolha “Salvar como PDF” como impressora.'}</span></button>
         <button class="btn" id="io-docx"><b>📄 Word (.docx)</b><span>Arquivo para editar no Word ou no Pages, mandar por WhatsApp ou e-mail.</span></button>
       </div>`);
-    const ler = () => { const o = { marcas: $('#io-marcas').checked, notas: $('#io-notas').checked, textos: $('#io-textos').checked }; gravarLS('pv.imprimir', o); return o; };
+    const ler = () => { const o = { marcas: $('#io-marcas').checked, notas: $('#io-notas').checked, textos: $('#io-textos').checked, slides: $('#io-slides').checked }; gravarLS('pv.imprimir', o); return o; };
     $('#io-pdf').onclick = () => { const o = ler(); fecharModal(); imprimirSermao(s, o); };
     $('#io-docx').onclick = async () => {
       const o = ler(), b = $('#io-docx'); b.disabled = true; b.querySelector('b').textContent = 'Preparando o Word…';
@@ -2429,10 +2449,11 @@ async function prepararSlides(){
   if (projEstado.sermao_id !== pAtual.id) projEstado = { sermao_id: pAtual.id, titulo: pAtual.titulo, slides: slidesP.map(x => x.url), atual: null, preta: false, t: 0 };   // t: 0 = ainda não tocou em nada (não muda o projetor)
   else projEstado.slides = slidesP.map(x => x.url);
   $('#sl-grade').innerHTML = slidesP.map(x => `<button class="sl-mini" data-n="${x.n}"><img src="${x.mini}" alt="" loading="lazy"><span>${x.n}</span></button>`).join('');
-  conectarProjetor(); iniciarBatida(); pintarSlides();
+  conectarProjetor(); iniciarBatida(); pintarSlides(); rearmarAuto();
   if (faltamEnviar) enviarSlides();
 }
 function pintarSlides(){
+  pintarMarcas(); pintarModo();
   if (!slidesP.length) return;
   $$('#sl-grade .sl-mini').forEach(b => b.classList.toggle('atual', +b.dataset.n === projEstado.atual));
   $('#sl-painel').classList.toggle('preta', projEstado.preta);
@@ -2458,14 +2479,15 @@ function abrirSlides(on){
   }
 }
 $('#sl-pill').addEventListener('click', e => { e.stopPropagation(); $('#menu-topicos').classList.add('oculto'); abrirSlides(); });
-function projetar(n){
+function projetar(n, peloAuto){
   projEstado.atual = n; projEstado.preta = false; projEstado.t = Date.now();
   enviarEstado(); pintarSlides();
+  if (!peloAuto) rearmarAuto();
 }
 $('#sl-grade').addEventListener('click', e => { const b = e.target.closest('.sl-mini'); if (b) projetar(+b.dataset.n); });
 $('#sl-ant').addEventListener('click', () => { const n = projEstado.atual || 1; if (n > 1) projetar(n - 1); else projetar(1); });
 $('#sl-seg').addEventListener('click', () => { const n = projEstado.atual || 0; if (n < slidesP.length) projetar(n + 1); else aviso('Último slide'); });
-$('#sl-preta').addEventListener('click', () => { projEstado.preta = !projEstado.preta; projEstado.t = Date.now(); enviarEstado(); pintarSlides(); });
+$('#sl-preta').addEventListener('click', () => { projEstado.preta = !projEstado.preta; projEstado.t = Date.now(); if (!projEstado.preta) rearmarAuto(); enviarEstado(); pintarSlides(); });
 
 function conectarProjetor(){
   if (canal || !sb() || !USUARIO || !USUARIO.codigo) return;
@@ -2496,7 +2518,7 @@ function correcaoPulpito(on){
   corrigindo = on;
   $('#pulpito').classList.toggle('editando-texto', on);
   if (on){
-    c.querySelectorAll('.gerado, .nota').forEach(x => x.contentEditable = 'false');
+    c.querySelectorAll('.gerado, .nota, .slide-mk').forEach(x => x.contentEditable = 'false');
     c.contentEditable = 'true';
     try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
   } else {
@@ -2515,7 +2537,7 @@ $('#conteudo').addEventListener('input', () => {
 function redesenharSermao(){
   const L = $('#leitura'), topo = L.scrollTop;
   $('#conteudo').innerHTML = pAtual.conteudo_html || '';
-  ligarReferencias(); renderNotas();
+  ligarReferencias(); renderNotas(); pintarMarcas();
   const c = $('#conteudo');
   topicos = [...c.querySelectorAll('h2')];
   if (!topicos.length) topicos = [...c.querySelectorAll('h1')];
@@ -2532,7 +2554,7 @@ const FERRAMENTAS = {
 };
 let corMarca = lerLS('pv.cor', 'amarelo');
 let ferramenta = lerLS('pv.ferr', 'realce');
-if (!FERRAMENTAS[ferramenta] && ferramenta !== 'nota') ferramenta = 'realce';   // 'texto' nunca fica salvo como padrão
+if (!FERRAMENTAS[ferramenta] && ferramenta !== 'nota' && ferramenta !== 'slide') ferramenta = 'realce';   // 'texto' nunca fica salvo como padrão
 function modoMarcar(on){
   if (!on) correcaoPulpito(false);
   $('#pulpito').classList.toggle('marcando', on);
@@ -2545,7 +2567,9 @@ $('#mk-concluir').addEventListener('click', () => modoMarcar(false));
 function pintarBarra(){
   correcaoPulpito(ferramenta === 'texto' && $('#pulpito').classList.contains('marcando'));
   $('#seg-ferr').closest('.barra-marca').querySelector('.dica').textContent = ferramenta === 'texto'
-    ? 'Toque no texto e corrija como num editor · as marcações continuam' : 'Toque na frase: aplica · toque de novo: tira';
+    ? 'Toque no texto e corrija como num editor · as marcações continuam'
+    : ferramenta === 'slide' ? 'Toque onde o slide entra · toque num selinho para mudar'
+    : 'Toque na frase: aplica · toque de novo: tira';
   $$('.cor').forEach(b => b.classList.toggle('on', b.dataset.cor === corMarca));
   $$('#seg-ferr button').forEach(b => b.classList.toggle('on', b.dataset.f === ferramenta));
   $('.barra-marca').dataset.f = ferramenta;
@@ -2622,6 +2646,7 @@ function salvarRealces(){
   copia.querySelectorAll('.gerado').forEach(x => x.remove());
   copia.querySelectorAll('[contenteditable]').forEach(x => x.removeAttribute('contenteditable'));
   copia.querySelectorAll('.ref-link').forEach(desembrulhar);
+  converterMarcasSlide(copia);      // quem digitar [slide 3] corrigindo o texto ganha a marcação
   ['mark', 'span.fc', 'span.sb'].forEach(sel => copia.querySelectorAll(sel).forEach(x => { if (x.parentElement && x.parentElement.closest(sel)) desembrulhar(x); }));
   copia.normalize();
   pAtual = { ...pAtual, conteudo_html: copia.innerHTML, atualizado_em: agora(), _pendente: true };
@@ -2633,7 +2658,8 @@ $('#conteudo').addEventListener('click', e => {
   if (sel && !sel.isCollapsed) return;                     // está selecionando à mão
   if (ferramenta === 'texto') return;
   if (ferramenta === 'nota') return tocarNota(e);
-  if (e.target.closest('.gerado, span.nota')) return;
+  if (ferramenta === 'slide') return tocarSlide(e);
+  if (e.target.closest('.gerado, span.nota, .slide-mk')) return;
   const ja = e.target.closest(FERRAMENTAS[ferramenta].seletor);
   if (ja && $('#conteudo').contains(ja)){ apagarDestaque(ja); salvarRealces(); return; }
   const r = fraseNoPonto(e.clientX, e.clientY);
@@ -2744,6 +2770,126 @@ function tocarNota(e){
   });
 }
 
+/* ===================== MARCAÇÕES DE SLIDE NO TEXTO + MODO AUTOMÁTICO ===================== */
+// No texto: <span class="slide-mk" data-slide="3"></span>. No Word: digite [slide 3] no ponto certo.
+const RE_MARCA_SLIDE = /\[\s*slide\s*(\d{1,3})\s*\]/gi;
+function converterMarcasSlide(raiz){
+  nosDeTextoEm(raiz).forEach(no => {
+    if (!no.parentElement || no.parentElement.closest('.slide-mk')) return;
+    const s_ = no.nodeValue; RE_MARCA_SLIDE.lastIndex = 0;
+    if (!RE_MARCA_SLIDE.test(s_)) return;
+    RE_MARCA_SLIDE.lastIndex = 0;
+    const doc = no.ownerDocument, frag = doc.createDocumentFragment(); let ult = 0, m;
+    while ((m = RE_MARCA_SLIDE.exec(s_))){
+      frag.appendChild(doc.createTextNode(s_.slice(ult, m.index)));
+      const sp = doc.createElement('span'); sp.className = 'slide-mk'; sp.dataset.slide = +m[1];
+      frag.appendChild(sp); ult = m.index + m[0].length;
+    }
+    frag.appendChild(doc.createTextNode(s_.slice(ult)));
+    no.replaceWith(frag);
+  });
+}
+const marcasSlide = () => $$('#conteudo .slide-mk').filter(m => +m.dataset.slide >= 1 && +m.dataset.slide <= slidesP.length);
+function pintarMarcas(){
+  $$('#conteudo .slide-mk').forEach(m => {
+    const n = +m.dataset.slide;
+    m.classList.toggle('invalida', !(n >= 1 && n <= slidesP.length));
+    m.classList.toggle('no-ar', n === projEstado.atual && !projEstado.preta);
+  });
+}
+
+// modo automático: o slide vai para o telão quando a marcação passa pela linha de leitura (1/3 da tela)
+let slAuto = lerLS('pv.slAuto', false), ultimoAuto = -1;
+function marcaNaLinha(){
+  const L = $('#leitura'), linha = L.getBoundingClientRect().top + L.clientHeight / 3;
+  let idx = -1; marcasSlide().forEach((m, i) => { if (m.getBoundingClientRect().top <= linha) idx = i; });
+  return idx;
+}
+function rearmarAuto(){ ultimoAuto = marcaNaLinha(); }      // segue a partir da próxima marcação
+function verificarAuto(){
+  if (!slAuto || !cron.inicio || projEstado.preta || !slidesP.length || !$('#pulpito').classList.contains('ativa')) return;
+  const idx = marcaNaLinha();
+  if (idx > ultimoAuto){            // só para a frente: rolar para trás não troca o slide
+    ultimoAuto = idx;
+    const n = +marcasSlide()[idx].dataset.slide;
+    if (n !== projEstado.atual) projetar(n, true);
+  }
+}
+function pintarModo(){
+  $$('#sl-modo button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'auto') === slAuto));
+  const info = $('#sl-auto-info'); if (!info) return;
+  if (!slAuto){ info.textContent = ''; return; }
+  const total = marcasSlide().length;
+  info.textContent = !total ? 'Automático: este sermão ainda não tem marcações de slide. Marque no texto (marca-texto › Slide) ou digite [slide 3] no Word.'
+    : !cron.inicio ? `Automático pronto (${total} marcação(ões)). Começa quando o cronômetro estiver rodando.`
+    : projEstado.preta ? 'Automático pausado pela tela preta.'
+    : `Automático ligado · ${total} marcação(ões) no texto.`;
+}
+$$('#sl-modo button').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation();
+  slAuto = b.dataset.m === 'auto'; gravarLS('pv.slAuto', slAuto);
+  rearmarAuto(); pintarModo();
+  aviso(slAuto ? 'Slides automáticos: ligados' : 'Slides automáticos: desligados');
+}));
+$('#leitura').addEventListener('scroll', verificarAuto, { passive: true });
+
+// fora do marca-texto: tocar no selinho projeta aquele slide
+$('#conteudo').addEventListener('click', e => {
+  if ($('#pulpito').classList.contains('marcando')) return;
+  const m = e.target.closest('.slide-mk'); if (!m) return;
+  e.stopPropagation();
+  const n = +m.dataset.slide;
+  if (!(n >= 1 && n <= slidesP.length)) return aviso(slidesP.length ? `Este sermão tem só ${slidesP.length} slide(s).` : 'Este sermão não tem slides.');
+  projetar(n);
+  aviso(`Slide ${n} no telão`);
+});
+
+// no marca-texto, ferramenta "Slide": tocar no texto para pôr ou mudar uma marcação
+function escolherSlide(titulo, atual, aoEscolher, aoApagar){
+  abrirModal(`
+    <h2>${titulo} <button class="icone" onclick="fecharModal()" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+    <p class="sub">Toque no slide que deve aparecer neste ponto do sermão.</p>
+    <div class="pick-grade">${slidesP.map(x => `<button class="pick-mini ${x.n === atual ? 'atual' : ''}" data-n="${x.n}"><img src="${x.mini}" alt=""><span>${x.n}</span></button>`).join('')}</div>
+    ${aoApagar ? '<div class="acoes" style="margin-top:14px"><button class="btn perigo" id="pk-apagar">Apagar esta marcação</button></div>' : ''}`);
+  const sug = $(`#modal-caixa .pick-mini[data-n="${atual}"]`); if (sug) setTimeout(() => sug.scrollIntoView({ block: 'nearest' }), 30);
+  $('#modal-caixa .pick-grade').onclick = ev => { const b = ev.target.closest('[data-n]'); if (!b) return; fecharModal(); aoEscolher(+b.dataset.n); };
+  if (aoApagar) $('#pk-apagar').onclick = () => { fecharModal(); aoApagar(); };
+}
+function pontoNoTexto(x, y){
+  let r = null;
+  if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(x, y);
+  else if (document.caretPositionFromPoint){ const p = document.caretPositionFromPoint(x, y); if (p){ r = document.createRange(); r.setStart(p.offsetNode, p.offset); } }
+  if (!r || r.startContainer.nodeType !== 3 || !$('#conteudo').contains(r.startContainer)) return null;
+  if (r.startContainer.parentElement.closest('.gerado')) return null;
+  // vai para o fim da palavra tocada (não corta palavras ao meio)
+  const t = r.startContainer.nodeValue; let o = r.startOffset;
+  while (o < t.length && /[\p{L}\p{N}\-:.,;!?…»”"')]/u.test(t[o])) o++;
+  r.setStart(r.startContainer, o); r.collapse(true);
+  return r;
+}
+function tocarSlide(e){
+  if (!slidesP.length) return aviso('Este sermão não tem slides. Acrescente o PDF em Editar.');
+  const ja = e.target.closest('.slide-mk');
+  if (ja){
+    return escolherSlide('Mudar a marcação', +ja.dataset.slide,
+      n => { ja.dataset.slide = n; salvarRealces(); pintarMarcas(); pintarModo(); },
+      () => { ja.remove(); salvarRealces(); pintarModo(); aviso('Marcação apagada'); });
+  }
+  const r = pontoNoTexto(e.clientX, e.clientY); if (!r) return;
+  // sugere o slide seguinte ao da marcação anterior no texto
+  const marca = document.createElement('span'); marca.className = 'slide-mk';
+  r.insertNode(marca);
+  const todas = $$('#conteudo .slide-mk'), i = todas.indexOf(marca);
+  const ant = todas.slice(0, i).reverse().find(m => +m.dataset.slide);
+  const sugestao = Math.min(slidesP.length, ant ? +ant.dataset.slide + 1 : 1);
+  marca.remove();
+  escolherSlide('Marcar slide neste ponto', sugestao, n => {
+    marca.dataset.slide = n; marca.contentEditable = 'false';
+    r.insertNode(marca);
+    salvarRealces(); pintarMarcas(); pintarModo(); aviso(`Marcação do slide ${n} salva`);
+  });
+}
+
 /* ===================== HORA E CRONÔMETRO ===================== */
 const ICONE_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICONE_PAUSA = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
@@ -2781,6 +2927,7 @@ function alternarCron(){
   if (cron.inicio){ cron.acumulado += Date.now() - cron.inicio; cron.inicio = null; aviso('Cronômetro pausado'); }
   else {
     cron.inicio = Date.now(); ultimoTick = Date.now();
+    if (typeof rearmarAuto === 'function') rearmarAuto();
     if (!cron.acumulado){
       aviso('Cronômetro iniciado');
       if (pAtual && $('#pulpito').classList.contains('ativa')) sessao = { sermaoId: pAtual.id, titulo: pAtual.titulo, culto: pAtual.culto || '', tempos: {}, nomes: {} };

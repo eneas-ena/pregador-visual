@@ -60,6 +60,23 @@ pt: `
 <p>A bolinha verde mostra que o projetor está conectado. Se a internet cair, o último slide continua na tela.</p>
 </details>
 
+<details><summary>4b. Slides automáticos (pelas marcações)</summary>
+<p>Os slides podem passar sozinhos conforme o texto sobe. Para isso, marque no sermão onde cada slide entra:</p>
+<ul>
+<li><b>No app:</b> abra o marca-texto, escolha <b>▣ Slide</b>, toque no ponto do texto e escolha a miniatura. Aparece um selinho, como <b>▣ 3</b>. Pode haver vários no mesmo parágrafo.</li>
+<li><b>No Word:</b> digite <b>[slide 3]</b> no ponto certo. Ao importar, vira selinho.</li>
+</ul>
+<p>No painel de Slides, escolha <b>Automático pelas marcações</b>. Funciona assim:</p>
+<ul>
+<li>Só passa slides com o <b>cronômetro rodando</b> (rolar o sermão antes do culto não mexe no telão).</li>
+<li>O slide entra quando o selinho chega a <b>um terço da altura da tela</b>.</li>
+<li>Rolar para trás <b>não</b> volta o slide. Para voltar, toque na miniatura ou no selinho.</li>
+<li>Tocar numa miniatura ou num selinho projeta na hora; o automático continua a partir da próxima marcação.</li>
+<li><b>Tela preta</b> pausa o automático.</li>
+</ul>
+<p>O selinho do slide que está no telão fica dourado. Os selinhos não saem na impressão nem no Word, a não ser que você marque a opção.</p>
+</details>
+
 <details><summary>5. Imprimir, compartilhar e guardar</summary>
 <p>No cartão do sermão, toque em <b>⋯</b>:</p>
 <ul>
@@ -139,6 +156,23 @@ en: `
 <li>On the iPad, open the sermon and tap <b>Slides</b>. Tap a thumbnail to project it; <b>Black screen</b> blanks the projector.</li>
 </ol>
 <p>The green dot means the projector is connected. If the internet drops, the last slide stays on screen.</p>
+</details>
+
+<details><summary>4b. Automatic slides (by markers)</summary>
+<p>Slides can advance by themselves as the text scrolls. To do that, mark in the sermon where each slide comes in:</p>
+<ul>
+<li><b>In the app:</b> open the highlighter, choose <b>▣ Slide</b>, tap the spot in the text and pick the thumbnail. A small marker appears, like <b>▣ 3</b>. A paragraph can have several.</li>
+<li><b>In Word:</b> type <b>[slide 3]</b> at the right spot. It becomes a marker when imported.</li>
+</ul>
+<p>In the Slides panel, choose <b>Automatic by markers</b>. How it works:</p>
+<ul>
+<li>It only changes slides while the <b>timer is running</b> (scrolling before the service doesn't touch the screen).</li>
+<li>A slide comes in when its marker reaches <b>one third of the screen height</b>.</li>
+<li>Scrolling back does <b>not</b> go back a slide. To go back, tap the thumbnail or the marker.</li>
+<li>Tapping a thumbnail or a marker projects it at once; automatic mode continues from the next marker.</li>
+<li><b>Black screen</b> pauses automatic mode.</li>
+</ul>
+<p>The marker of the slide on screen turns gold. Markers don't appear in print or Word unless you check that option.</p>
 </details>
 
 <details><summary>5. Print, share and keep</summary>

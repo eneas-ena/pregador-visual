@@ -176,6 +176,14 @@ exato: {
   'O código atual deixa de funcionar na hora. No notebook do data-show da sua igreja, você vai precisar abrir o endereço novo (ou digitar o código novo).': 'The current code stops working right away. On your church projector computer, you will need to open the new address (or type the new code).',
   'Para gerar um código novo é preciso internet.': 'You need internet to generate a new code.', 'Falta rodar o schema-v2.6.sql no Supabase.': 'The schema-v2.6.sql still needs to be run in Supabase.',
   'Não consegui gerar o código. Verifique a internet.': 'Could not generate the code. Check the internet.',
+  '▣ Slide': '▣ Slide', 'Marcar slide no texto': 'Mark a slide in the text', 'Manual': 'Manual', 'Automático pelas marcações': 'Automatic by markers',
+  'Toque onde o slide entra · toque num selinho para mudar': 'Tap where the slide comes in · tap a marker to change it',
+  'Marcar slide neste ponto': 'Mark a slide at this spot', 'Mudar a marcação': 'Change the marker', 'Toque no slide que deve aparecer neste ponto do sermão.': 'Tap the slide that should appear at this point of the sermon.',
+  'Apagar esta marcação': 'Delete this marker', 'Marcação apagada': 'Marker deleted', 'Este sermão não tem slides.': 'This sermon has no slides.',
+  'Este sermão não tem slides. Acrescente o PDF em Editar.': 'This sermon has no slides. Add the PDF in Edit.',
+  'Slides automáticos: ligados': 'Automatic slides: on', 'Slides automáticos: desligados': 'Automatic slides: off',
+  'Automático: este sermão ainda não tem marcações de slide. Marque no texto (marca-texto › Slide) ou digite [slide 3] no Word.': 'Automatic: this sermon has no slide markers yet. Mark them in the text (highlighter › Slide) or type [slide 3] in Word.',
+  'Automático pausado pela tela preta.': 'Automatic paused by the black screen.', 'Incluir as marcações de slide ▣': 'Include the slide markers ▣',
   'Ajuda': 'Help', 'Ajuda: como usar o app': 'Help: how to use the app', '✓ Pronto para pregar sem internet': '✓ Ready to preach offline',
   'Sem internet no iPad · a projeção volta quando a conexão voltar': 'Offline on the iPad · projection resumes when the connection returns',
   'Sermão': 'Sermon', 'Textos bíblicos': 'Bible passages', 'Pregador Visual · página': 'Pregador Visual · page', '· Texto:': '· Passage:'
@@ -231,6 +239,11 @@ padroes: [
   [/^⚠ (\d+) slide\(s\) ainda não estão neste aparelho\. Abra o app com internet antes do culto\.$/, '⚠ $1 slide(s) are not on this device yet. Open the app online before the service.'],
   [/^Guardando slides no aparelho (\d+)\/(\d+)…$/, 'Saving slides to the device $1/$2…'],
   [/^Código novo: (\w+)$/, 'New code: $1'],
+  [/^Automático pronto \((\d+) marcação\(ões\)\)\. Começa quando o cronômetro estiver rodando\.$/, 'Automatic ready ($1 marker(s)). It starts when the timer is running.'],
+  [/^Automático ligado · (\d+) marcação\(ões\) no texto\.$/, 'Automatic on · $1 marker(s) in the text.'],
+  [/^Slide (\d+) no telão$/, 'Slide $1 on the screen'],
+  [/^Marcação do slide (\d+) salva$/, 'Marker for slide $1 saved'],
+  [/^Este sermão tem só (\d+) slide\(s\)\.$/, 'This sermon has only $1 slide(s).'],
   [/^(gratuito|pago|cortesia)( · administrador)?$/, (m, pl, adm) => ({ gratuito: 'free', pago: 'paid', cortesia: 'courtesy' }[pl]) + (adm ? ' · administrator' : '')]
 ]
 };
