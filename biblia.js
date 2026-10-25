@@ -193,7 +193,7 @@
   async function lerEpub(bytes){
     if (!window.fflate) throw new Error('descompactador');
     let arquivos;
-    try { arquivos = window.fflate.unzipSync(new Uint8Array(bytes)); } catch { throw new Error('nao_epub'); }
+    try { arquivos = window.fflate.unzipSync(new Uint8Array(bytes), { filter: f => /\.(x?html?|opf|ncx|xml)$/i.test(f.name) }); }   /* só o texto: pula imagens (menos memória no iPad) */ catch { throw new Error('nao_epub'); }
     // DRM: só quando o texto (páginas) está criptografado; fontes "embaralhadas" não contam
     const enc = Object.keys(arquivos).find(n => /META-INF\/encryption\.xml$/i.test(n));
     if (enc && /<(enc:)?CipherReference[^>]*URI="[^"]+\.x?html?"/i.test(dec.decode(arquivos[enc]))) throw new Error('drm');
@@ -260,5 +260,5 @@
     }).filter(Boolean);
     return blocos.join(' … ');
   }
-  window.PVBiblia = { lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
+  window.PVBiblia = { versao: '2.8.3', lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
 })();

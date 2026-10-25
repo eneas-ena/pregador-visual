@@ -360,6 +360,11 @@ li > .nota-linha{margin:.3em 0}
 .ct-cab{display:flex;align-items:center;gap:12px;padding:12px 14px 10px 20px;border-bottom:1px solid var(--linha)}
 .ct-rot{font-size:11px;letter-spacing:.14em;color:var(--ouro);font-weight:700;white-space:nowrap}
 .ct-cab b{flex:1;font-size:21px}
+.ct-cab{flex-wrap:wrap}
+#ct-versoes{display:flex;gap:6px;flex-wrap:wrap}
+#ct-versoes:empty{display:none}
+.ct-v{font:inherit;font-size:13px;font-weight:700;letter-spacing:.04em;padding:6px 10px;border-radius:999px;border:1.5px solid var(--linha);background:transparent;color:var(--txt2);cursor:pointer}
+.ct-v.on{background:var(--ouro);border-color:var(--ouro);color:#0F1B33}
 .ct-corpo{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 22px 20px;font-size:var(--gfs,24px);line-height:1.55;white-space:pre-wrap;cursor:pointer}
 .faltam{border:1.5px solid var(--t-laranja);background:rgba(245,153,74,.10);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14.5px;line-height:1.5}
 .faltam b{color:var(--t-laranja)}
@@ -725,7 +730,7 @@ li > .nota-linha{margin:.3em 0}
   <div id="leitura"><article id="conteudo"></article><div class="fim-sermao"></div></div>
   <div id="ct-fundo" class="ct-fundo oculto"></div>
   <div id="caixa-texto" class="caixa-texto oculto" role="dialog">
-    <div class="ct-cab"><span class="ct-rot">TEXTO BÍBLICO</span><b id="ct-ref"></b>
+    <div class="ct-cab"><span class="ct-rot">TEXTO BÍBLICO</span><b id="ct-ref"></b><div id="ct-versoes"></div>
       <button class="icone" id="ct-fechar" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div id="ct-corpo" class="ct-corpo"></div>
   </div>
@@ -769,7 +774,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.8.2';
+const VERSAO = '2.8.3';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -987,6 +992,7 @@ window.addEventListener('offline', mostrarPendencias);
 function irPara(id){
   $$('.tela').forEach(t => t.classList.toggle('ativa', t.id === id));
   if (id !== 'pulpito') liberarTela();
+  if (id !== 'pulpito' && window._recarregarAoSair){ window._recarregarAoSair = false; setTimeout(() => location.reload(), 300); }
 }
 
 /* ===================== REFERÊNCIAS BÍBLICAS ===================== */
@@ -1736,7 +1742,7 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="conta-linha" style="display:block"><span>Bíblias neste aparelho</span>
       ${BIBLIAS.length ? BIBLIAS.map(b => `<div class="copia"><div><small>${esc(b.sigla)}${b.sigla === VBIB ? ' · ' + 'padrão' : ''}</small><b>${esc(b.titulo || b.sigla)}</b><span class="dica">${(b.total || 0).toLocaleString(LOCALE)} versículos</span></div>${b.sigla !== VBIB ? `<button class="btn" data-padrao-biblia="${esc(b.sigla)}">Usar esta</button>` : ''}<button class="btn perigo" data-rm-biblia="${esc(b.sigla)}">Remover</button></div>`).join('') : '<p class="dica" style="margin:6px 0">Nenhuma Bíblia importada ainda. Com uma Bíblia aqui, basta digitar a referência que o texto aparece sozinho.</p>'}
       <button class="btn" id="bb-importar" style="margin-top:10px;width:100%;justify-content:center">📖 Importar Bíblia (EPUB)</button>
-      <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Funciona com os EPUBs da Sociedade Bíblica do Brasil (NAA e outras) e da NVI.</p>
+      <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Testado com NAA, NVI, ARA, ARC e NTLH (de estudo); outros EPUBs podem funcionar.</p>
     </div>
     <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
       <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>
@@ -2480,25 +2486,43 @@ $('#conteudo').addEventListener('click', e => {
 });
 
 // caixa do texto bíblico
-function abrirTextoBiblico(i){
+// ctAtual: o que a caixa mostra — referência, texto salvo no sermão e de qual Bíblia ele veio
+let ctAtual = null;
+const temSigla = sg => BIBLIAS.some(b => b.sigla === sg);
+async function pintarCaixa(sigla){
+  const c = ctAtual; if (!c) return;
+  let txt = '', mostrada = '';
+  if (sigla && temSigla(sigla) && window.PVBiblia){ const r = parseRef(c.ref); try { txt = r ? await window.PVBiblia.texto(sigla, r) : ''; } catch {} if (txt) mostrada = sigla; }
+  if (!txt){ txt = c.salvo; mostrada = c.vsalvo; sigla = ''; }
+  if (ctAtual !== c) return;
+  $('#ct-ref').textContent = c.ref + (mostrada ? ' · ' + mostrada : '');
+  $('#ct-corpo').textContent = txt || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
+  // botões de versão: as Bíblias do aparelho + o texto salvo, quando ele não é de uma delas
+  const opc = [], ativo = sigla && mostrada === sigla ? sigla : '';
+  if (c.salvo && !temSigla(c.vsalvo)) opc.push(['', c.vsalvo || 'Sermão']);
+  BIBLIAS.forEach(b => opc.push([b.sigla, b.sigla]));
+  $('#ct-versoes').innerHTML = opc.length > 1 ? opc.map(([v, r]) => `<button class="ct-v ${v === ativo ? 'on' : ''}" data-ctv="${esc(v)}">${esc(r)}</button>`).join('') : '';
+}
+$('#ct-versoes').addEventListener('click', e => { const b = e.target.closest('[data-ctv]'); if (b){ e.stopPropagation(); pintarCaixa(b.dataset.ctv); } });
+function mostrarCaixa(){ $('#caixa-texto').classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto'); }
+// texto cadastrado no sermão. Se ele veio de uma Bíblia do aparelho, mostra na Bíblia em uso (a escolhida em Minha conta)
+async function abrirTextoBiblico(i){
   const t = (pAtual.textos || [])[i]; if (!t) return;
-  if (!String(t.texto || '').trim() && temBiblia()) return textoDaBiblia(t.ref).then(x => abrirDaBiblia(t.ref, x));
   const cx = $('#caixa-texto'); cx._i = i;
-  $('#ct-ref').textContent = t.ref + (t.versao ? ' · ' + t.versao : '');
-  if (!t.versao && String(t.texto || '').trim()) versaoDoTexto(t.ref, t.texto).then(v => { if (v && cx._i === i){ t.versao = v; $('#ct-ref').textContent = t.ref + ' · ' + v; } });
-  $('#ct-corpo').textContent = String(t.texto || '').trim() || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
-  cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
+  const c = ctAtual = { ref: t.ref, salvo: String(t.texto || '').trim(), vsalvo: t.versao || '' };
+  if (c.salvo && !c.vsalvo){ c.vsalvo = await versaoDoTexto(t.ref, c.salvo); if (c.vsalvo) t.versao = c.vsalvo; }
+  if (ctAtual !== c) return;
+  await pintarCaixa(!c.salvo || c.vsalvo ? VBIB : '');
+  mostrarCaixa();
   $('#p-base').classList.toggle('on', String(i) === $('#p-base').dataset.i);
 }
 // referência sem texto cadastrado: mostra direto da Bíblia do aparelho
-async function abrirDaBiblia(bruto, ja){
+async function abrirDaBiblia(bruto){
   const cx = $('#caixa-texto');
   if (!cx.classList.contains('oculto') && cx._i === 'b:' + bruto) return fecharTextoBiblico();
-  const x = ja || await textoDaBiblia(bruto);
   cx._i = 'b:' + bruto;
-  $('#ct-ref').textContent = bruto + (temBiblia() ? ' · ' + VBIB : '');
-  $('#ct-corpo').textContent = x || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
-  cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
+  ctAtual = { ref: bruto, salvo: '', vsalvo: '' };
+  await pintarCaixa(VBIB); mostrarCaixa();
 }
 function fecharTextoBiblico(){ $('#caixa-texto').classList.add('oculto'); $('#ct-fundo').classList.add('oculto'); $('#p-base').classList.remove('on'); }
 ['#p-base', '#p-base2'].forEach(sel => $(sel).addEventListener('click', e => {
@@ -3238,7 +3262,18 @@ function liberarTela(){ if (trava){ trava.release().catch(() => {}); trava = nul
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && $('#pulpito').classList.contains('ativa') && !trava) segurarTela(); });
 
 /* ===================== INÍCIO ===================== */
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(r => {
+    // a página principal já é a nova, mas o leitor de Bíblias ficou antigo? pede a atualização na hora
+    if (window.PVBiblia && window.PVBiblia.versao !== VERSAO) r.update().catch(() => {});
+  }).catch(() => {});
+  // versão nova instalada: recarrega uma vez para usar TODOS os arquivos novos (no púlpito, espera sair)
+  const tinha = !!navigator.serviceWorker.controller; let recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!tinha || recarregou) return; recarregou = true;
+    if ($('#pulpito').classList.contains('ativa')) window._recarregarAoSair = true; else location.reload();
+  });
+}
 async function iniciar(){
   const msg = (() => { try { const m = sessionStorage.getItem('pv.msg'); sessionStorage.removeItem('pv.msg'); return m; } catch { return null; } })();
   const ok = (() => { try { const m = sessionStorage.getItem('pv.ok'); sessionStorage.removeItem('pv.ok'); return m; } catch { return null; } })();
