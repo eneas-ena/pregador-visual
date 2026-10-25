@@ -18,6 +18,8 @@
 <script src="config.js"></script>
 <script src="traducao-en.js"></script>
 <script src="ajuda.js"></script>
+<script src="fflate.min.js"></script>
+<script src="biblia.js"></script>
 <script src="mammoth.min.js"></script>
 <script src="supabase.min.js"></script>
 <style>
@@ -620,7 +622,7 @@ li > .nota-linha{margin:.3em 0}
       </div>
 
       <div class="secao">
-        <h2>Textos bíblicos (NAA)
+        <h2><span>Textos bíblicos <select id="ed-versao" class="oculto" title="Versão da Bíblia" style="width:auto;padding:4px 8px;font-size:14px;margin-left:6px"></select></span>
           <button class="btn" id="ed-add-texto">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Adicionar texto
@@ -758,6 +760,7 @@ li > .nota-linha{margin:.3em 0}
 </aside>
 
 <input type="file" id="arq-restaurar" accept="application/json,.json" class="oculto">
+<input type="file" id="arq-biblia" accept=".epub,application/epub+zip" class="oculto">
 <div id="modal" class="modal-fundo oculto"><div class="modal" id="modal-caixa"></div></div>
 <div id="balao" class="oculto"></div>
 <div id="aviso"></div>
@@ -766,7 +769,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.7.2';
+const VERSAO = '2.8.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -841,6 +844,17 @@ if (IDIOMA === 'en'){
   if (dl) dl.innerHTML = ['Morning', 'Afternoon', 'Evening', 'Bible study', 'Communion'].map(v => `<option value="${v}">`).join('');
 }
 function trocarIdioma(l){ try { localStorage.setItem('pv.idioma', l); } catch {} location.reload(); }
+
+/* ===================== BÍBLIAS DO PASTOR (importadas do EPUB, ficam só neste aparelho) ===================== */
+let BIBLIAS = lerLS('pv.biblias', []);
+let VBIB = lerLS('pv.versao', '');
+if (!BIBLIAS.some(b => b.sigla === VBIB)) VBIB = BIBLIAS[0] ? BIBLIAS[0].sigla : '';
+const temBiblia = () => !!VBIB && !!window.PVBiblia;
+async function textoDaBiblia(refTxt){
+  if (!temBiblia()) return '';
+  const r = parseRef(refTxt); if (!r) return '';
+  try { return await window.PVBiblia.texto(VBIB, r); } catch { return ''; }
+}
 document.querySelectorAll('[data-idioma]').forEach(b => {
   b.textContent = IDIOMA === 'en' ? 'Português' : 'English';
   b.addEventListener('click', () => trocarIdioma(IDIOMA === 'en' ? 'pt' : 'en'));
@@ -1083,7 +1097,7 @@ async function desenharLista(){
       <h3 title="${esc(s.titulo)}">${esc(s.titulo)}</h3>
       <div class="info">
         <div class="meta">${fmtData(s.data_pregacao)}${s.culto ? ' · ' + esc(s.culto) : ''}${(s.textos || []).length ? ' · ' + s.textos.length + ' texto(s)' : ''}${s._pendente ? ' · <span style="color:var(--t-amarelo)">envio pendente</span>' : ''}</div>
-        ${(() => { const f = refsSemTexto(s.conteudo_html, s.textos || []); return f.length ? `<div class="meta alerta">⚠ Falta o texto de: ${f.slice(0, 4).map(a => esc(a.bruto)).join(', ')}${f.length > 4 ? ' e mais ' + (f.length - 4) : ''}</div>` : ''; })()}
+        ${(() => { const f = temBiblia() ? [] : refsSemTexto(s.conteudo_html, s.textos || []); return f.length ? `<div class="meta alerta">⚠ Falta o texto de: ${f.slice(0, 4).map(a => esc(a.bruto)).join(', ')}${f.length > 4 ? ' e mais ' + (f.length - 4) : ''}</div>` : ''; })()}
         ${(s.slides || []).length ? (faltamAqui(s) ? `<div class="meta alerta">⚠ ${faltamAqui(s)} slide(s) ainda não estão neste aparelho. Abra o app com internet antes do culto.</div>` : `<div class="meta pronto">✓ Pronto para pregar sem internet</div>`) : ''}
         ${hist[s.id] ? `<div class="meta pregado">Pregado ${hist[s.id].length}× · último em ${fmtData(hist[s.id][0].data)}${hist[s.id][0].culto ? ' (' + esc(hist[s.id][0].culto) + ')' : ''}${hist[s.id][0].local ? ' · ' + esc(hist[s.id][0].local) : ''}</div>` : ''}
       </div>
@@ -1116,6 +1130,7 @@ async function carregarBiblioteca(){
 }
 
 async function abrirEditor(id){
+  pintarVersaoEditor();
   await carregarBiblioteca();
   if (id){ edAtual = await dbPegar('sermoes', id); }
   else { edAtual = { id: uid(), titulo: '', data_pregacao: proximoDomingo(), culto: '', conteudo_html: '', textos: [], base_idx: 0, excluido: false, criado_em: agora() }; }
@@ -1166,10 +1181,17 @@ function addLinhaTexto(t = { ref: '', texto: '' }, base = false){
     <textarea class="t-texto" placeholder="Cole aqui o texto da NAA (só na primeira vez que usar esta referência)">${esc(t.texto)}</textarea>
     <button class="icone t-remover" title="Remover texto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
   const ref = linha.querySelector('.t-ref'), txt = linha.querySelector('.t-texto'), msg = linha.querySelector('.t-msg');
+  if (temBiblia()) txt.placeholder = 'Digite a referência ao lado: o texto vem da sua Bíblia ' + VBIB;
   const buscar = () => {
     const salvo = bibliotecaTextos[chaveRef(ref.value)];
     if (salvo && !txt.value.trim()){ txt.value = salvo.texto; msg.innerHTML = '<span class="achou">✓ texto já salvo</span>'; }
     else if (salvo){ msg.innerHTML = '<span class="achou">✓ referência conhecida</span>'; }
+    else if (!txt.value.trim() && temBiblia() && ref.value.trim()){
+      textoDaBiblia(ref.value).then(x => {
+        if (x && !txt.value.trim()){ txt.value = x; msg.innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; verificarFaltantes(); }
+        else if (!x) msg.textContent = parseRef(ref.value) ? 'Não achei esta referência na Bíblia ' + VBIB + '.' : '';
+      });
+    }
     else msg.textContent = '';
   };
   ref.addEventListener('change', buscar); ref.addEventListener('blur', buscar);
@@ -1295,9 +1317,17 @@ $('#ed-salvar').addEventListener('click', async () => {
     if (l.querySelector('input[name=base]').checked) base = textos.length;
     textos.push({ ref, texto });
     const ch = chaveRef(ref), salvo = bibliotecaTextos[ch];
-    if (texto && (!salvo || salvo.texto !== texto)) paraBiblioteca.push({ chave: ch, ref, texto, versao: 'NAA', atualizado_em: agora(), _pendente: true });
+    if (texto && (!salvo || salvo.texto !== texto)) paraBiblioteca.push({ chave: ch, ref, texto, versao: VBIB || 'NAA', atualizado_em: agora(), _pendente: true });
   }
   if (lendoPdf) return aviso('Espere terminar a conversão dos slides.');
+  // referências citadas sem texto: busca na Bíblia do aparelho (assim o sermão leva os textos para os outros aparelhos)
+  if (temBiblia()){
+    for (const t of textos) if (!t.texto){ const x = await textoDaBiblia(t.ref); if (x){ t.texto = x; paraBiblioteca.push({ chave: chaveRef(t.ref), ref: t.ref, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); } }
+    for (const f of refsSemTexto(edHtml, textos)){
+      const x = await textoDaBiblia(f.bruto);
+      if (x){ textos.push({ ref: f.bruto, texto: x }); paraBiblioteca.push({ chave: chaveRef(f.bruto), ref: f.bruto, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); }
+    }
+  }
   { const f = refsSemTexto(edHtml, textos);
     if (f.length && !confirm(`O sermão cita ${f.length} referência(s) sem texto cadastrado:\n\n${f.map(a => '• ' + a.bruto).join('\n')}\n\nNo púlpito elas vão abrir sem o texto. Salvar assim mesmo?`)) { verificarFaltantes(); return; } }
   const s = { ...edAtual, titulo, data_pregacao: $('#ed-data').value || null, culto: $('#ed-culto').value.trim(), conteudo_html: edHtml, textos, base_idx: base, atualizado_em: agora(), _pendente: true };
@@ -1359,8 +1389,8 @@ function verificarFaltantes(){
     box.innerHTML = `<div class="faltam"><b>⚠ O sermão cita ${faltam.length} referência(s) sem texto cadastrado:</b>
       <div class="refs">${faltam.map(a => `<span>${esc(a.bruto)}</span>`).join('')}</div>
       <button class="btn" id="ed-add-faltam" type="button">Acrescentar ${faltam.length > 1 ? 'estas referências' : 'esta referência'} abaixo</button>
-      ${naBib ? `<span class="dica"> · ${naBib} já ${naBib > 1 ? 'estão' : 'está'} na sua biblioteca e ${naBib > 1 ? 'virão' : 'virá'} com o texto</span>` : ''}</div>`;
-    $('#ed-add-faltam').onclick = () => {
+      ${naBib ? `<span class="dica"> · ${naBib} já ${naBib > 1 ? 'estão' : 'está'} na sua biblioteca e ${naBib > 1 ? 'virão' : 'virá'} com o texto</span>` : ''}${temBiblia() && naBib < faltam.length ? `<span class="dica"> · o texto vem da sua Bíblia ${esc(VBIB)}</span>` : ''}</div>`;
+    $('#ed-add-faltam').onclick = async () => {
       // aproveita linhas vazias e acrescenta as que faltam
       faltam.forEach(a => {
         const existente = $$('#ed-textos .texto-linha').find(l => { const r = parseRef(l.querySelector('.t-ref').value); return r ? r.chave === a.ref.chave : chaveRef(l.querySelector('.t-ref').value) === chaveRef(a.bruto); });
@@ -1371,6 +1401,10 @@ function verificarFaltantes(){
         linha.querySelector('.t-ref').value = a.bruto;
         if (bib) linha.querySelector('.t-texto').value = bib.texto;
       });
+      if (temBiblia()) for (const l of $$('#ed-textos .texto-linha')){
+        const tx = l.querySelector('.t-texto'), rf = l.querySelector('.t-ref').value.trim();
+        if (rf && !tx.value.trim()){ const x = await textoDaBiblia(rf); if (x){ tx.value = x; l.querySelector('.t-msg').innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; } }
+      }
       verificarFaltantes();
       const prim = $$('#ed-textos .t-texto').find(t => !t.value.trim()); if (prim) prim.focus();
     };
@@ -1689,6 +1723,11 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="conta-linha"><span>Plano</span><b>${esc(u.plano || 'gratuito')}${u.admin ? ' · administrador' : ''}</b></div>
     <div class="conta-linha" style="display:block"><div style="display:flex;justify-content:space-between"><span>Espaço para slides</span><b id="conta-uso">${navigator.onLine ? 'calculando…' : 'sem internet'}</b></div><div class="uso-barra"><i id="conta-uso-barra" style="width:0"></i></div></div>
     <div class="conta-linha" style="display:block"><span>Projeção (notebook do data-show)</span>${htmlProjecao(true)}</div>
+    <div class="conta-linha" style="display:block"><span>Bíblias neste aparelho</span>
+      ${BIBLIAS.length ? BIBLIAS.map(b => `<div class="copia"><div><small>${esc(b.sigla)}${b.sigla === VBIB ? ' · ' + 'padrão' : ''}</small><b>${esc(b.titulo || b.sigla)}</b><span class="dica">${(b.total || 0).toLocaleString(LOCALE)} versículos</span></div>${b.sigla !== VBIB ? `<button class="btn" data-padrao-biblia="${esc(b.sigla)}">Usar esta</button>` : ''}<button class="btn perigo" data-rm-biblia="${esc(b.sigla)}">Remover</button></div>`).join('') : '<p class="dica" style="margin:6px 0">Nenhuma Bíblia importada ainda. Com uma Bíblia aqui, basta digitar a referência que o texto aparece sozinho.</p>'}
+      <button class="btn" id="bb-importar" style="margin-top:10px;width:100%;justify-content:center">📖 Importar Bíblia (EPUB)</button>
+      <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Funciona com os EPUBs da Sociedade Bíblica do Brasil (NAA e outras) e da NVI.</p>
+    </div>
     <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
       <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>
     <div class="conta-linha" style="display:block"><span>Backup e restauração</span>
@@ -1702,6 +1741,9 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="acoes" style="margin-top:16px"><button class="btn perigo" id="conta-sair">Sair da conta</button><button class="btn prim" onclick="fecharModal()">Fechar</button></div>`);
   $('#conta-sair').onclick = () => { fecharModal(); sairDaConta(); };
   $('#bk-completo').onclick = () => { fecharModal(); fazerBackup(true); };
+  $('#bb-importar').onclick = () => $('#arq-biblia').click();
+  $$('#modal-caixa [data-rm-biblia]').forEach(b => b.onclick = () => removerBiblia(b.dataset.rmBiblia));
+  $$('#modal-caixa [data-padrao-biblia]').forEach(b => b.onclick = () => { usarBiblia(b.dataset.padraoBiblia); fecharModal(); $('#btn-conta').click(); });
   $('#bk-leve').onclick = () => { fecharModal(); fazerBackup(false); };
   $('#bk-restaurar').onclick = () => { fecharModal(); $('#arq-restaurar').click(); };
   if (navigator.onLine){
@@ -2114,6 +2156,56 @@ function menuImprimir(id){
   });
 }
 
+/* ===================== IMPORTAR / REMOVER BÍBLIA ===================== */
+function salvarListaBiblias(){ gravarLS('pv.biblias', BIBLIAS); gravarLS('pv.versao', VBIB); pintarVersaoEditor(); }
+function usarBiblia(sigla){ VBIB = sigla; salvarListaBiblias(); aviso('Bíblia em uso: ' + sigla); }
+function pintarVersaoEditor(){
+  const sel = $('#ed-versao'); if (!sel) return;
+  sel.classList.toggle('oculto', !BIBLIAS.length);
+  sel.innerHTML = BIBLIAS.map(b => `<option value="${esc(b.sigla)}" ${b.sigla === VBIB ? 'selected' : ''}>${esc(b.sigla)}</option>`).join('');
+}
+$('#ed-versao').addEventListener('change', e => usarBiblia(e.target.value));
+async function importarBiblia(arq){
+  if (!window.PVBiblia || !window.fflate) return aviso('Não consegui carregar o leitor de EPUB. Abra o app com internet uma vez e tente de novo.', 6000);
+  aviso('Lendo a Bíblia… isso leva alguns segundos.', 15000);
+  let r;
+  try { r = await window.PVBiblia.lerEpub(await arq.arrayBuffer()); }
+  catch (e){
+    console.error(e); const m = String(e.message);
+    return aviso(m === 'drm' ? 'Este EPUB tem proteção contra cópia (DRM) e não pode ser lido.'
+      : m === 'nao_epub' ? 'Este arquivo não é um EPUB.'
+      : 'Não reconheci a organização deste EPUB. Mande o arquivo ao administrador para ver se dá para incluir.', 8000);
+  }
+  abrirModal(`
+    <h2>Importar Bíblia</h2>
+    <p class="sub">${esc(r.titulo || arq.name)}</p>
+    <p style="line-height:1.55;margin-bottom:12px">Encontrei <b>${r.nLivros} livros</b> e <b>${r.total.toLocaleString(LOCALE)} versículos</b>.${r.nLivros < 66 ? ' Alguns livros não foram reconhecidos.' : ''}</p>
+    <label class="rot" for="bb-sigla">Sigla da versão</label>
+    <input id="bb-sigla" maxlength="8" value="${esc(r.sigla)}" placeholder="Ex.: NAA" style="text-transform:uppercase;margin-bottom:14px">
+    <div class="acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn prim" id="bb-confirmar">Importar</button></div>`);
+  $('#bb-confirmar').onclick = async () => {
+    const sigla = $('#bb-sigla').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!sigla) return aviso('Digite a sigla da versão (ex.: NAA).');
+    $('#bb-confirmar').disabled = true; $('#bb-confirmar').textContent = 'Guardando…';
+    try {
+      await window.PVBiblia.guardar(sigla, r.livros);
+      BIBLIAS = BIBLIAS.filter(b => b.sigla !== sigla).concat([{ sigla, titulo: r.titulo || sigla, total: r.total, data: agora() }]);
+      if (!VBIB) VBIB = sigla;
+      salvarListaBiblias(); fecharModal();
+      aviso(`Bíblia ${sigla} pronta neste aparelho`, 4000);
+      if ($('#pulpito').classList.contains('ativa') && pAtual) redesenharSermao();
+    } catch (e){ console.error(e); aviso('Não consegui guardar a Bíblia neste aparelho (falta espaço?).', 6000); fecharModal(); }
+  };
+}
+async function removerBiblia(sigla){
+  if (!confirm(`Remover a Bíblia ${sigla} deste aparelho?\n\nOs textos já guardados nos sermões continuam.`)) return;
+  try { await window.PVBiblia.apagar(sigla); } catch {}
+  BIBLIAS = BIBLIAS.filter(b => b.sigla !== sigla);
+  if (VBIB === sigla) VBIB = BIBLIAS[0] ? BIBLIAS[0].sigla : '';
+  salvarListaBiblias(); fecharModal(); $('#btn-conta').click();
+}
+$('#arq-biblia').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f){ fecharModal(); importarBiblia(f); } });
+
 /* ===================== RECUPERAR A SENHA ===================== */
 function pedirRecuperacao(){
   abrirModal(`
@@ -2331,17 +2423,18 @@ $('#p-voltar').addEventListener('click', () => { modoMarcar(false); abrirSlides(
 // liga as referências citadas no sermão aos textos cadastrados (reconhece formas diferentes de escrever)
 function ligarReferencias(){
   const textos = pAtual.textos || [];
-  if (!textos.length) return;
+  if (!textos.length && !temBiblia()) return;
   const cad = textos.map(t => parseRef(t.ref));
   const usados = new Set();
   nosDeTextoEm($('#conteudo')).forEach(no => {
     if (no.parentElement.closest('.ref-link,.gerado')) return;
-    const s_ = no.nodeValue, achados = acharRefs(s_).map(a => ({ ...a, t: textoPara(a.ref, a.bruto, textos, cad) })).filter(a => a.t >= 0);
+    const s_ = no.nodeValue, achados = acharRefs(s_).map(a => ({ ...a, t: textoPara(a.ref, a.bruto, textos, cad) })).filter(a => a.t >= 0 || temBiblia());
     if (!achados.length) return;
     const frag = document.createDocumentFragment(); let ult = 0;
     achados.forEach(a => {
       frag.appendChild(document.createTextNode(s_.slice(ult, a.ini)));
       const sp = document.createElement('span'); sp.className = 'ref-link'; sp.dataset.t = a.t; sp.textContent = s_.slice(a.ini, a.fim);
+      if (a.t < 0) sp.dataset.b = a.bruto;
       frag.appendChild(sp); ult = a.fim; usados.add(a.t);
     });
     frag.appendChild(document.createTextNode(s_.slice(ult)));
@@ -2371,6 +2464,7 @@ $('#conteudo').addEventListener('click', e => {
   if ($('#pulpito').classList.contains('marcando')) return;
   const r = e.target.closest('.ref-link'); if (!r) return;
   const i = +r.dataset.t;
+  if (i < 0) return abrirDaBiblia(r.dataset.b);
   if (!$('#caixa-texto').classList.contains('oculto') && $('#caixa-texto')._i === i) return fecharTextoBiblico();
   abrirTextoBiblico(i);
 });
@@ -2378,10 +2472,21 @@ $('#conteudo').addEventListener('click', e => {
 // caixa do texto bíblico
 function abrirTextoBiblico(i){
   const t = (pAtual.textos || [])[i]; if (!t) return;
+  if (!String(t.texto || '').trim() && temBiblia()) return textoDaBiblia(t.ref).then(x => abrirDaBiblia(t.ref, x));
   const cx = $('#caixa-texto'); cx._i = i;
   $('#ct-ref').textContent = t.ref; $('#ct-corpo').textContent = String(t.texto || '').trim() || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
   cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
   $('#p-base').classList.toggle('on', String(i) === $('#p-base').dataset.i);
+}
+// referência sem texto cadastrado: mostra direto da Bíblia do aparelho
+async function abrirDaBiblia(bruto, ja){
+  const cx = $('#caixa-texto');
+  if (!cx.classList.contains('oculto') && cx._i === 'b:' + bruto) return fecharTextoBiblico();
+  const x = ja || await textoDaBiblia(bruto);
+  cx._i = 'b:' + bruto;
+  $('#ct-ref').textContent = bruto + (temBiblia() ? ' · ' + VBIB : '');
+  $('#ct-corpo').textContent = x || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
+  cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
 }
 function fecharTextoBiblico(){ $('#caixa-texto').classList.add('oculto'); $('#ct-fundo').classList.add('oculto'); $('#p-base').classList.remove('on'); }
 ['#p-base', '#p-base2'].forEach(sel => $(sel).addEventListener('click', e => {

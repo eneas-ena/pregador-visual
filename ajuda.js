@@ -38,6 +38,17 @@ pt: `
 <p>Texto colado uma vez fica na sua biblioteca. Referências em português e em inglês (John 3:16, Phil 3:7) são reconhecidas. Só vira link dourado a referência que tem texto cadastrado.</p>
 </details>
 
+<details><summary>2b. Sua Bíblia no app (EPUB)</summary>
+<p>Em vez de colar cada texto, importe a Bíblia que você já tem em EPUB:</p>
+<ol>
+<li>Em <b>Minha conta</b>, toque em <b>📖 Importar Bíblia (EPUB)</b> e escolha o arquivo. O app confere os livros e versículos e pede a sigla (NAA, NVI…).</li>
+<li>No sermão, basta digitar a referência: o texto aparece sozinho. O botão <b>Acrescentar estas referências</b> preenche todas as que faltam de uma vez.</li>
+<li>Ao salvar, as referências citadas no sermão que ainda estiverem sem texto são preenchidas pela Bíblia.</li>
+<li>No púlpito, uma referência sem texto cadastrado também abre direto da Bíblia.</li>
+</ol>
+<p>Use só uma Bíblia que você adquiriu. O texto fica <b>só neste aparelho</b>; importe também no iPad e no Mac, se usar os dois. Funciona com os EPUBs da Sociedade Bíblica do Brasil (NAA e outras) e da NVI. EPUBs com proteção contra cópia (DRM) não podem ser lidos.</p>
+</details>
+
 <details><summary>3. No púlpito</summary>
 <ul>
 <li><b>Cronômetro:</b> toque para iniciar ou pausar; segure 1 segundo para encerrar. Azul até 30 min, amarelo de 30 a 40, laranja de 40 a 50, vermelho depois de 50.</li>
@@ -134,6 +145,17 @@ en: `
 <li>Tap <b>Save</b>.</li>
 </ol>
 <p>A passage you paste once stays in your library. References in English and Portuguese are recognized. Only references with a saved passage become gold links.</p>
+</details>
+
+<details><summary>2b. Your Bible in the app (EPUB)</summary>
+<p>Instead of pasting each passage, import the Bible you already have as an EPUB:</p>
+<ol>
+<li>In <b>My account</b>, tap <b>📖 Import a Bible (EPUB)</b> and pick the file. The app checks the books and verses and asks for the abbreviation (NAA, NVI…).</li>
+<li>In the sermon, just type the reference: the text appears by itself. The <b>Add these references below</b> button fills in all the missing ones at once.</li>
+<li>When you save, references cited in the sermon that still have no text are filled from the Bible.</li>
+<li>In the pulpit, a reference with no saved passage also opens straight from the Bible.</li>
+</ol>
+<p>Only use a Bible you own. The text stays <b>only on this device</b>; import it on your iPad and Mac too if you use both. Works with EPUBs from the Brazilian Bible Society (NAA and others) and the NVI. EPUBs with copy protection (DRM) cannot be read.</p>
 </details>
 
 <details><summary>3. In the pulpit</summary>
