@@ -265,6 +265,7 @@ padroes: [
   [/^Bíblia (\w+) pronta neste aparelho$/, '$1 Bible ready on this device'],
   [/^Remover a Bíblia (\w+) deste aparelho\?$/, 'Remove the $1 Bible from this device?'],
   [/^([\d.,]+) versículos$/, '$1 verses'],
+  [/^(\d+) livros$/, '$1 books'], [/^e$/, 'and'],
   [/^(\w+) · padrão$/, '$1 · default'],
   [/^Encontrei$/, 'Found'],
   [/^(gratuito|pago|cortesia)( · administrador)?$/, (m, pl, adm) => ({ gratuito: 'free', pago: 'paid', cortesia: 'courtesy' }[pl]) + (adm ? ' · administrator' : '')]

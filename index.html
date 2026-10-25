@@ -769,7 +769,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.8.1';
+const VERSAO = '2.8.2';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -850,6 +850,13 @@ let BIBLIAS = lerLS('pv.biblias', []);
 let VBIB = lerLS('pv.versao', '');
 if (!BIBLIAS.some(b => b.sigla === VBIB)) VBIB = BIBLIAS[0] ? BIBLIAS[0].sigla : '';
 const temBiblia = () => !!VBIB && !!window.PVBiblia;
+// de qual Bíblia do aparelho veio este texto? (compara com cada uma)
+async function versaoDoTexto(refTxt, texto){
+  const r = parseRef(refTxt), alvo = String(texto || '').replace(/\s+/g, ' ').trim();
+  if (!r || !alvo || !window.PVBiblia) return '';
+  for (const b of BIBLIAS){ try { if ((await window.PVBiblia.texto(b.sigla, r)).replace(/\s+/g, ' ').trim() === alvo) return b.sigla; } catch {} }
+  return '';
+}
 async function textoDaBiblia(refTxt){
   if (!temBiblia()) return '';
   const r = parseRef(refTxt); if (!r) return '';
@@ -1181,6 +1188,8 @@ function addLinhaTexto(t = { ref: '', texto: '' }, base = false){
     <textarea class="t-texto" placeholder="Cole aqui o texto da NAA (só na primeira vez que usar esta referência)">${esc(t.texto)}</textarea>
     <button class="icone t-remover" title="Remover texto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>`;
   const ref = linha.querySelector('.t-ref'), txt = linha.querySelector('.t-texto'), msg = linha.querySelector('.t-msg');
+  linha.dataset.versao = t.versao || '';
+  txt.addEventListener('input', () => { linha.dataset.versao = ''; });
   if (temBiblia()) txt.placeholder = 'Digite a referência ao lado: o texto vem da sua Bíblia ' + VBIB;
   const buscar = () => {
     const salvo = bibliotecaTextos[chaveRef(ref.value)];
@@ -1188,7 +1197,7 @@ function addLinhaTexto(t = { ref: '', texto: '' }, base = false){
     else if (salvo){ msg.innerHTML = '<span class="achou">✓ referência conhecida</span>'; }
     else if (!txt.value.trim() && temBiblia() && ref.value.trim()){
       textoDaBiblia(ref.value).then(x => {
-        if (x && !txt.value.trim()){ txt.value = x; msg.innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; verificarFaltantes(); }
+        if (x && !txt.value.trim()){ txt.value = x; linha.dataset.versao = VBIB; msg.innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; verificarFaltantes(); }
         else if (!x) msg.textContent = parseRef(ref.value) ? 'Não achei esta referência na Bíblia ' + VBIB + '.' : '';
       });
     }
@@ -1315,17 +1324,18 @@ $('#ed-salvar').addEventListener('click', async () => {
     if (!ref && !texto) continue;
     if (!ref) return aviso('Há um texto sem referência.');
     if (l.querySelector('input[name=base]').checked) base = textos.length;
-    textos.push({ ref, texto });
+    const versao = texto ? (l.dataset.versao || await versaoDoTexto(ref, texto)) : '';
+    textos.push(versao ? { ref, texto, versao } : { ref, texto });
     const ch = chaveRef(ref), salvo = bibliotecaTextos[ch];
-    if (texto && (!salvo || salvo.texto !== texto)) paraBiblioteca.push({ chave: ch, ref, texto, versao: VBIB || 'NAA', atualizado_em: agora(), _pendente: true });
+    if (texto && (!salvo || salvo.texto !== texto)) paraBiblioteca.push({ chave: ch, ref, texto, versao: versao || VBIB || 'NAA', atualizado_em: agora(), _pendente: true });
   }
   if (lendoPdf) return aviso('Espere terminar a conversão dos slides.');
   // referências citadas sem texto: busca na Bíblia do aparelho (assim o sermão leva os textos para os outros aparelhos)
   if (temBiblia()){
-    for (const t of textos) if (!t.texto){ const x = await textoDaBiblia(t.ref); if (x){ t.texto = x; paraBiblioteca.push({ chave: chaveRef(t.ref), ref: t.ref, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); } }
+    for (const t of textos) if (!t.texto){ const x = await textoDaBiblia(t.ref); if (x){ t.texto = x; t.versao = VBIB; paraBiblioteca.push({ chave: chaveRef(t.ref), ref: t.ref, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); } }
     for (const f of refsSemTexto(edHtml, textos)){
       const x = await textoDaBiblia(f.bruto);
-      if (x){ textos.push({ ref: f.bruto, texto: x }); paraBiblioteca.push({ chave: chaveRef(f.bruto), ref: f.bruto, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); }
+      if (x){ textos.push({ ref: f.bruto, texto: x, versao: VBIB }); paraBiblioteca.push({ chave: chaveRef(f.bruto), ref: f.bruto, texto: x, versao: VBIB, atualizado_em: agora(), _pendente: true }); }
     }
   }
   { const f = refsSemTexto(edHtml, textos);
@@ -1403,7 +1413,7 @@ function verificarFaltantes(){
       });
       if (temBiblia()) for (const l of $$('#ed-textos .texto-linha')){
         const tx = l.querySelector('.t-texto'), rf = l.querySelector('.t-ref').value.trim();
-        if (rf && !tx.value.trim()){ const x = await textoDaBiblia(rf); if (x){ tx.value = x; l.querySelector('.t-msg').innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; } }
+        if (rf && !tx.value.trim()){ const x = await textoDaBiblia(rf); if (x){ tx.value = x; l.dataset.versao = VBIB; l.querySelector('.t-msg').innerHTML = `<span class="achou">✓ da Bíblia ${esc(VBIB)}</span>`; } }
       }
       verificarFaltantes();
       const prim = $$('#ed-textos .t-texto').find(t => !t.value.trim()); if (prim) prim.focus();
@@ -2474,7 +2484,9 @@ function abrirTextoBiblico(i){
   const t = (pAtual.textos || [])[i]; if (!t) return;
   if (!String(t.texto || '').trim() && temBiblia()) return textoDaBiblia(t.ref).then(x => abrirDaBiblia(t.ref, x));
   const cx = $('#caixa-texto'); cx._i = i;
-  $('#ct-ref').textContent = t.ref; $('#ct-corpo').textContent = String(t.texto || '').trim() || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
+  $('#ct-ref').textContent = t.ref + (t.versao ? ' · ' + t.versao : '');
+  if (!t.versao && String(t.texto || '').trim()) versaoDoTexto(t.ref, t.texto).then(v => { if (v && cx._i === i){ t.versao = v; $('#ct-ref').textContent = t.ref + ' · ' + v; } });
+  $('#ct-corpo').textContent = String(t.texto || '').trim() || '(O texto desta referência ainda não foi cadastrado.)'; $('#ct-corpo').scrollTop = 0;
   cx.classList.remove('oculto'); $('#ct-fundo').classList.remove('oculto');
   $('#p-base').classList.toggle('on', String(i) === $('#p-base').dataset.i);
 }

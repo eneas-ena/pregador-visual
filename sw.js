@@ -1,5 +1,5 @@
 // Pregador Visual — service worker (funciona sem internet)
-const VERSAO = '2.8.1';
+const VERSAO = '2.8.2';
 // nome diferente do Pregador pessoal ("pregador-…"), para um nunca apagar o cache do outro
 const CACHE = 'pvisual-' + VERSAO;
 const ARQUIVOS = [
@@ -9,7 +9,8 @@ const ARQUIVOS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
+  // cache: 'reload' = busca sempre a versão nova no GitHub, nunca uma cópia antiga guardada pelo navegador
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

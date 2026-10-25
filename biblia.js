@@ -7,6 +7,7 @@
 //   B) Editoras com arquivo por livro (ex.: NVI Thomas Nelson): índice de
 //      capítulos no topo e números de versículo em <span>
 //   C) SBB, edições mais antigas (ARA, ARC): um arquivo por capítulo, id="vN"
+//   D) conversões sem marcação (ex.: Bíblia de Estudo NTLH): índice + números sobrescritos
 // ============================================================
 (function(){
   const NOMES = {   // nome do livro (sem acento, minúsculo, sem espaço) -> código do app
@@ -127,6 +128,55 @@
     }
     return { livros, total };
   }
+  // ---------- formato D (conversões "cruas", ex.: Bíblia de Estudo NTLH) ----------
+  // livro: pelo índice (toc.ncx); capítulo: título grande "João 3" ou, sem título,
+  // quando a numeração dos versículos recomeça; versículo: número em <sup><small>.
+  // Notas de estudo, títulos e quadros (em azul) são descartados.
+  function formatoD(arquivos){
+    const livros = {}; let total = 0;
+    const opfN = Object.keys(arquivos).find(n => /\.opf$/i.test(n)); if (!opfN) return { livros, total };
+    const base = opfN.replace(/[^/]*$/, ''), opf = dec.decode(arquivos[opfN]);
+    const hrefDe = {}; for (const m of opf.matchAll(/<item\b[^>]*>/g)){ const h = m[0].match(/href="([^"]+)"/), i = m[0].match(/id="([^"]+)"/); if (h && i) hrefDe[i[1]] = base + decodeURIComponent(h[1]); }
+    const espinha = [...opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)].map(m => hrefDe[m[1]]).filter(Boolean);
+    const ncxN = Object.keys(arquivos).find(n => /\.ncx$/i.test(n)); if (!ncxN || !espinha.length) return { livros, total };
+    const ncxBase = ncxN.replace(/[^/]*$/, '');
+    const inicio = {};   // arquivo -> livro (ou '' para entradas que não são livros)
+    for (const [, rot, src] of dec.decode(arquivos[ncxN]).matchAll(/<text>([^<]*)<\/text>\s*<\/navLabel>\s*<content src="([^"#]+)/g)){
+      const n = limpa(rot); inicio[ncxBase + decodeURIComponent(src)] = /^j[óo]$/i.test(n) && /ó/i.test(n) ? 'jb' : (idDoNome(n) || '');
+    }
+    const MARCA = /<sup>\s*<small>((?:(?!<\/small>)[\s\S])*)<\/small>\s*<\/sup>/g;
+    let livro = null, cap = 0, ultV = 0, vAtual = 0, aguardando = false;
+    const por = (txt) => { if (!livro || !cap || !vAtual) return; const c = ((livros[livro] = livros[livro] || {})[cap] = livros[livro][cap] || {}); const x = limpa(txt); if (!x) return; if (!c[vAtual]){ c[vAtual] = x; total++; } else c[vAtual] += ' ' + x; };
+    for (const arq of espinha){
+      if (arq in inicio){ livro = inicio[arq] || null; cap = 0; ultV = 0; vAtual = 0; aguardando = true; }
+      if (!livro || !arquivos[arq]) continue;
+      let b = dec.decode(arquivos[arq]); b = b.slice(b.indexOf('<body'));
+      for (const [el] of b.matchAll(/<(p|blockquote|li|h[1-6])\b[^>]*>[\s\S]*?<\/\1>/g)){
+        const semMarca = el.replace(MARCA, '');
+        // título de capítulo: "João 3", "Salmo 23", ou o nome do livro (livro de um capítulo)
+        const tg = semMarca.match(/<font size="7">([\s\S]*?)<\/font>\s*(?:<\/a>)?\s*<\/p>/) || semMarca.match(/^<blockquote[^>]*>\s*<b><font color="#[0-9A-Fa-f]+">(Salmo\s+\d+)<\/font><\/b>/);
+        if (tg){
+          const m = limpa(tg[1]).match(/^(.*?)\s*(\d+)?$/);
+          const id = m && (/^salmo$/i.test(m[1]) ? 'sl' : idDoNome(m[1]));
+          if (id === livro){ cap = +(m[2] || 1); ultV = 0; vAtual = 0; aguardando = false; }
+          continue;
+        }
+        if (/color="#(0F60AB|023768)"/i.test(semMarca)) continue;           // nota de estudo, título, quadro
+        const partes = el.replace(/<\/?(p|blockquote|li|h[1-6])\b[^>]*>/g, ' ').split(MARCA);
+        por(partes[0]);
+        for (let i = 1; i < partes.length; i += 2){
+          const n = limpa(partes[i]).match(/^(\d+)(?:\s*[-–]\s*(\d+))?$/);
+          if (!n){ por(partes[i + 1]); continue; }
+          const v = +n[1], ate = n[2] ? +n[2] : v;                          // "26-27": versículos unidos
+          if (aguardando){ cap = cap || 1; aguardando = false; }
+          else if (v <= ultV && v === 1) cap++;                               // recomeçou a numeração: capítulo seguinte
+          ultV = ate; vAtual = v; por(partes[i + 1]);
+          if (ate > v && livro && cap){ const c = livros[livro][cap]; if (c && c[v]) for (let k = v + 1; k <= ate; k++){ if (!c[k]) total++; c[k] = '=' + v; } }
+        }
+      }
+    }
+    return { livros, total };
+  }
   function siglaDoTitulo(titulo){
     const t = semAc(titulo || '');
     if (/nova almeida atualizada/.test(t)) return 'NAA';
@@ -152,6 +202,7 @@
     let r = formatoA(arquivos);
     if (r.total < 1000) r = formatoB(arquivos);
     if (r.total < 1000) r = formatoC(arquivos);
+    if (r.total < 1000) r = formatoD(arquivos);
     if (r.total < 1000) throw new Error('formato');
     return { titulo, sigla: siglaDoTitulo(titulo), livros: r.livros, total: r.total, nLivros: Object.keys(r.livros).length };
   }
@@ -195,8 +246,16 @@
   async function texto(sigla, ref){
     if (!ref) return '';
     const vs = await capitulo(sigla, ref.livro, ref.cap); if (!vs) return '';
+    // versículo unido a outro (ex.: NTLH "26-27") fica guardado como "=26"
+    const ini = v => { const x = vs[v]; return typeof x === 'string' && x[0] === '=' ? +x.slice(1) : v; };
+    const fimDe = v => { let e = v; while (vs[e + 1] === '=' + v) e++; return e; };
+    const rot = (a, e) => sobrescrito(a) + (e > a ? '⁻' + sobrescrito(e) : '');
     const blocos = ref.faixas.map(([a, b]) => {
-      const out = []; for (let v = a; v <= b; v++) if (vs[v]) out.push(sobrescrito(v) + ' ' + vs[v]);
+      const out = []; let feito = 0;
+      for (let v = ini(a); v <= b; v++){
+        const i = ini(v); if (i <= feito || !vs[i] || vs[i][0] === '=') continue;
+        const e = fimDe(i); out.push(rot(i, e) + ' ' + vs[i]); feito = e;
+      }
       return out.join(' ');
     }).filter(Boolean);
     return blocos.join(' … ');
