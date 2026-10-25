@@ -310,6 +310,7 @@ li > .nota-linha{margin:.3em 0}
 .pick-mini.atual{border-color:var(--ouro);box-shadow:0 0 0 2px var(--ouro)}
 .sl-modo{width:100%;margin-top:2px}
 .sl-auto-info{width:100%;font-size:12.5px;color:var(--txt2);line-height:1.4}
+.sl-pill.auto::after{content:'AUTO';font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:5px;background:var(--ouro);color:#0F1B33;margin-left:4px}
 .modal textarea{min-height:110px;resize:vertical;line-height:1.45;margin-bottom:14px}
 #ensinar-botao.ouvindo{background:var(--ouro);color:#0F1B33}
 /* slides */
@@ -765,7 +766,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.7.0';
+const VERSAO = '2.7.1';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2812,7 +2813,7 @@ function verificarAuto(){
   if (idx > ultimoAuto){            // só para a frente: rolar para trás não troca o slide
     ultimoAuto = idx;
     const n = +marcasSlide()[idx].dataset.slide;
-    if (n !== projEstado.atual) projetar(n, true);
+    if (n !== projEstado.atual) projetar(n, true); else pintarModo();
   }
 }
 function pintarModo(){
@@ -2823,7 +2824,9 @@ function pintarModo(){
   info.textContent = !total ? 'Automático: este sermão ainda não tem marcações de slide. Marque no texto (marca-texto › Slide) ou digite [slide 3] no Word.'
     : !cron.inicio ? `Automático pronto (${total} marcação(ões)). Começa quando o cronômetro estiver rodando.`
     : projEstado.preta ? 'Automático pausado pela tela preta.'
-    : `Automático ligado · ${total} marcação(ões) no texto.`;
+    : (() => { const prox = marcasSlide()[ultimoAuto + 1]; return prox ? `Automático ligado · próximo: ▣ ${prox.dataset.slide}` : 'Automático ligado · todas as marcações já passaram.'; })();
+  const pt = $('#sl-pt'); if (pt) pt.title = slAuto ? 'Automático' : 'Manual';
+  $('#sl-pill').classList.toggle('auto', slAuto);
 }
 $$('#sl-modo button').forEach(b => b.addEventListener('click', e => {
   e.stopPropagation();
@@ -2912,6 +2915,7 @@ function contarTopico(){
 }
 function tick(){
   contarTopico();
+  if (slAuto) verificarAuto();          // no iPad a rolagem com o dedo nem sempre avisa: confere 4× por segundo
   const d = new Date();
   $('#hora').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   const ms = decorrido(), min = ms / 60000;
@@ -2934,7 +2938,7 @@ function alternarCron(){
     }
     gravarLS(K('sessao'), sessao);
   }
-  gravarLS(K('cron'), cron); tick();
+  gravarLS(K('cron'), cron); tick(); if (typeof pintarModo === 'function') pintarModo();
 }
 function zerarCron(msg = 'Cronômetro zerado'){ cron = { inicio: null, acumulado: 0 }; sessao = null; gravarLS(K('cron'), cron); gravarLS(K('sessao'), null); tick(); aviso(msg); }
 // toque = iniciar/pausar · segurar 1 segundo = zerar
