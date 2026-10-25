@@ -6,6 +6,7 @@
 //      um arquivo por capítulo, versículos marcados com id="vC.V"
 //   B) Editoras com arquivo por livro (ex.: NVI Thomas Nelson): índice de
 //      capítulos no topo e números de versículo em <span>
+//   C) SBB, edições mais antigas (ARA, ARC): um arquivo por capítulo, id="vN"
 // ============================================================
 (function(){
   const NOMES = {   // nome do livro (sem acento, minúsculo, sem espaço) -> código do app
@@ -91,6 +92,41 @@
     }
     return { livros, total };
   }
+  // ---------- formato C (SBB, edições mais antigas: ARA, ARC…) ----------
+  // um arquivo por capítulo; versículo marcado com id="vN"; livro e capítulo vêm do
+  // "id" do arquivo no volume.opf (ex.: Joao3, livro1Corintios1, Jo1 = Jó) ou do título h2
+  function formatoC(arquivos){
+    const livros = {}; let total = 0;
+    const opf = Object.keys(arquivos).find(n => /\.opf$/i.test(n));
+    const base = opf ? opf.replace(/[^/]*$/, '') : '';
+    const idDe = {};
+    if (opf) for (const [, href, id] of dec.decode(arquivos[opf]).matchAll(/<item\b[^>]*?href="([^"]+)"[^>]*?id="([^"]+)"/g)) idDe[base + decodeURIComponent(href)] = id;
+    const doNome = nome => nome === 'Jo' ? 'jb' : idDoNome(nome.replace(/^Salmo$/i, 'Salmos').replace(/^Cantico$/i, 'Canticos'));
+    for (const [nome, bytes] of Object.entries(arquivos)){
+      if (!/\.x?html?$/i.test(nome)) continue;
+      let t = dec.decode(bytes);
+      if (!/<a class="v(?:wj)?"[^>]*id="v\d+"/.test(t)) continue;
+      let livro = null, cap = 0;
+      const mi = (idDe[nome] || '').replace(/^livro/i, '').match(/^(\d?\D+?)(\d+)$/);
+      if (mi){ livro = doNome(mi[1]); cap = +mi[2]; }
+      if (!livro){
+        const h = t.match(/<h2 class="c"[^>]*>([\s\S]*?)<\/h2>/);
+        const mh = h && limpa(h[1]).match(/^(.+?)\s*(\d+)?$/);
+        if (mh){ livro = doNome(mh[1].replace(/\s+/g, '')) || idDoNome(mh[1]); cap = +(mh[2] || 1); }
+      }
+      if (!livro || !cap) continue;
+      t = t.slice(t.indexOf('<body'));
+      t = t.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, '').replace(/<span class="chamada">[\s\S]*?<\/span>/gi, '').replace(/<a [^>]*class="footnote-link"[^>]*>[\s\S]*?<\/a>/gi, '');
+      const partes = t.split(/<a class="v(?:wj)?"[^>]*id="v(\d+)"[^>]*>\s*\d+\s*<\/a>/);
+      const vs = ((livros[livro] = livros[livro] || {})[cap] = livros[livro][cap] || {});
+      for (let i = 1; i < partes.length; i += 2){
+        const v = +partes[i], txt = limpa(partes[i + 1] || '');
+        if (!txt) continue;
+        if (!vs[v]) total++; vs[v] = txt;
+      }
+    }
+    return { livros, total };
+  }
   function siglaDoTitulo(titulo){
     const t = semAc(titulo || '');
     if (/nova almeida atualizada/.test(t)) return 'NAA';
@@ -115,6 +151,7 @@
     const titulo = opf ? limpa((dec.decode(arquivos[opf]).match(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/i) || [])[1] || '') : '';
     let r = formatoA(arquivos);
     if (r.total < 1000) r = formatoB(arquivos);
+    if (r.total < 1000) r = formatoC(arquivos);
     if (r.total < 1000) throw new Error('formato');
     return { titulo, sigla: siglaDoTitulo(titulo), livros: r.livros, total: r.total, nLivros: Object.keys(r.livros).length };
   }
