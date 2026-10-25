@@ -766,7 +766,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.7.1';
+const VERSAO = '2.7.2';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2318,6 +2318,7 @@ async function abrirPulpito(id){
     $('#p-base').classList.toggle('oculto', !tx.length); $('#p-base2').classList.toggle('oculto', !tx.length);
     if (tx.length){ $('#p-base-ref').textContent = $('#p-base-ref2').textContent = tx[bi].ref; $('#p-base').dataset.i = bi; } }
   irPara('pulpito');
+  ajustarFolga();      // só agora a tela do púlpito tem altura (antes dava zero e a última frase não subia)
   // volta ao ponto onde parou (se recarregar no meio da pregação)
   const pos = lerLS(K('pos'), {});
   $('#leitura').scrollTop = pos[id] || 0;
@@ -2430,8 +2431,9 @@ $('#p-prox-menu').addEventListener('click', e => {
 $('#menu-topicos').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) irTopico(+b.dataset.i); });
 document.addEventListener('click', e => { if (!e.target.closest('#menu-topicos')) $('#menu-topicos').classList.add('oculto'); });
 
-function ajustarFolga(){ /* deixa espaço no fim para o último parágrafo subir até o alto */ $('.fim-sermao').style.setProperty('--folga', Math.round($('#leitura').clientHeight * 0.6) + 'px'); }
+function ajustarFolga(){ /* deixa espaço no fim para o último parágrafo subir até o alto */ $('.fim-sermao').style.setProperty('--folga', Math.round($('#leitura').clientHeight * 0.8) + 'px'); }
 window.addEventListener('resize', () => { ajustarFolga(); atualizarTopico(); });
+window.addEventListener('orientationchange', () => setTimeout(ajustarFolga, 300));
 
 
 /* ===================== SLIDES NO PÚLPITO + PROJETOR ===================== */
@@ -2803,7 +2805,9 @@ function pintarMarcas(){
 let slAuto = lerLS('pv.slAuto', false), ultimoAuto = -1;
 function marcaNaLinha(){
   const L = $('#leitura'), linha = L.getBoundingClientRect().top + L.clientHeight / 3;
-  let idx = -1; marcasSlide().forEach((m, i) => { if (m.getBoundingClientRect().top <= linha) idx = i; });
+  const lista = marcasSlide();
+  if (lista.length && L.scrollTop + L.clientHeight >= L.scrollHeight - 4) return lista.length - 1;   // chegou ao fim do sermão
+  let idx = -1; lista.forEach((m, i) => { if (m.getBoundingClientRect().top <= linha) idx = i; });
   return idx;
 }
 function rearmarAuto(){ ultimoAuto = marcaNaLinha(); }      // segue a partir da próxima marcação
@@ -2818,6 +2822,7 @@ function verificarAuto(){
 }
 function pintarModo(){
   $$('#sl-modo button').forEach(b => b.classList.toggle('on', (b.dataset.m === 'auto') === slAuto));
+  $('#sl-pill').classList.toggle('auto', slAuto);
   const info = $('#sl-auto-info'); if (!info) return;
   if (!slAuto){ info.textContent = ''; return; }
   const total = marcasSlide().length;
@@ -2826,7 +2831,6 @@ function pintarModo(){
     : projEstado.preta ? 'Automático pausado pela tela preta.'
     : (() => { const prox = marcasSlide()[ultimoAuto + 1]; return prox ? `Automático ligado · próximo: ▣ ${prox.dataset.slide}` : 'Automático ligado · todas as marcações já passaram.'; })();
   const pt = $('#sl-pt'); if (pt) pt.title = slAuto ? 'Automático' : 'Manual';
-  $('#sl-pill').classList.toggle('auto', slAuto);
 }
 $$('#sl-modo button').forEach(b => b.addEventListener('click', e => {
   e.stopPropagation();
