@@ -774,7 +774,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.8.3';
+const VERSAO = '2.8.4';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1742,7 +1742,7 @@ $('#btn-conta').addEventListener('click', async () => {
     <div class="conta-linha" style="display:block"><span>Bíblias neste aparelho</span>
       ${BIBLIAS.length ? BIBLIAS.map(b => `<div class="copia"><div><small>${esc(b.sigla)}${b.sigla === VBIB ? ' · ' + 'padrão' : ''}</small><b>${esc(b.titulo || b.sigla)}</b><span class="dica">${(b.total || 0).toLocaleString(LOCALE)} versículos</span></div>${b.sigla !== VBIB ? `<button class="btn" data-padrao-biblia="${esc(b.sigla)}">Usar esta</button>` : ''}<button class="btn perigo" data-rm-biblia="${esc(b.sigla)}">Remover</button></div>`).join('') : '<p class="dica" style="margin:6px 0">Nenhuma Bíblia importada ainda. Com uma Bíblia aqui, basta digitar a referência que o texto aparece sozinho.</p>'}
       <button class="btn" id="bb-importar" style="margin-top:10px;width:100%;justify-content:center">📖 Importar Bíblia (EPUB)</button>
-      <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Testado com NAA, NVI, ARA, ARC e NTLH (de estudo); outros EPUBs podem funcionar.</p>
+      <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Testado com NAA, NVI, ARA, ARC, NTLH e King James (de estudo); outros EPUBs podem funcionar.</p>
     </div>
     <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
       <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>

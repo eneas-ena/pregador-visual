@@ -8,6 +8,7 @@
 //      capítulos no topo e números de versículo em <span>
 //   C) SBB, edições mais antigas (ARA, ARC): um arquivo por capítulo, id="vN"
 //   D) conversões sem marcação (ex.: Bíblia de Estudo NTLH): índice + números sobrescritos
+//   E) arquivo por livro com id="vC.V" e capitular (ex.: King James Atualizada de Estudo)
 // ============================================================
 (function(){
   const NOMES = {   // nome do livro (sem acento, minúsculo, sem espaço) -> código do app
@@ -177,6 +178,44 @@
     }
     return { livros, total };
   }
+  // ---------- formato E (arquivo por livro, ex.: King James Atualizada de Estudo) ----------
+  // livro: <h1 class="chapter"> (arquivos de continuação herdam o anterior);
+  // versículo 1 do capítulo: <a class="dcap" id="cN">; demais: <a class="v" id="vC.V">
+  function formatoE(arquivos){
+    const livros = {}; let total = 0;
+    const opfN = Object.keys(arquivos).find(n => /\.opf$/i.test(n));
+    let ordem = Object.keys(arquivos).sort();
+    if (opfN){
+      const base = opfN.replace(/[^/]*$/, ''), opf = dec.decode(arquivos[opfN]), hrefDe = {};
+      for (const m of opf.matchAll(/<item\b[^>]*>/g)){ const h = m[0].match(/href="([^"]+)"/), i = m[0].match(/id="([^"]+)"/); if (h && i) hrefDe[i[1]] = base + decodeURIComponent(h[1]); }
+      const esp = [...opf.matchAll(/<itemref\b[^>]*idref="([^"]+)"/g)].map(m => hrefDe[m[1]]).filter(n => n && arquivos[n]);
+      if (esp.length) ordem = esp;
+    }
+    const MARCA = /<a class="(?:v" id="v(\d+)\.(\d+)|dcap" id="c(\d+))"[^>]*>\s*\d+\s*<\/a>/g;
+    let livro = null;
+    for (const nome of ordem){
+      if (!/\.x?html?$/i.test(nome)) continue;
+      let t = dec.decode(arquivos[nome]);
+      if (!/<a class="(v|dcap)" id="(v\d+\.\d+|c\d+)"/.test(t)) continue;
+      t = t.slice(t.indexOf('<body'));
+      const h = t.match(/<h1 class="chapter"[^>]*>([\s\S]*?)<\/h1>/);
+      if (h){ const n = limpa(h[1]); livro = /^j[óÓ]$/i.test(n) ? 'jb' : idDoNome(n); }
+      if (!livro) continue;
+      t = t.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, '')
+           .replace(/<p class="(tx1|link-index|center1|bibliography)"[^>]*>(?:(?!<\/p>)(?!<a class="(?:v|dcap)")[\s\S])*<\/p>/gi, '')
+           .replace(/<p>\s*<em>(?:(?!<\/p>)(?!<a class)[\s\S])*<\/p>/gi, '')           // títulos de salmo e "(Dt 5.1-21)"
+           // título simples seguido das passagens paralelas: "Jesus convoca Mateus" + "(Mt 9.9-13; Lc 5.27-32)"
+           .replace(/(?:<p>(?:(?!<\/p>)(?!<a )[\s\S])*<\/p>\s*)?<p[^>]*>\s*(?:<em>)?\s*\(\s*<a href(?:(?!<\/p>)(?!<a class)[\s\S])*<\/p>/gi, '');
+      const partes = t.split(MARCA);                                                   // [texto, c, v, cDcap, texto, …]
+      for (let i = 1; i + 3 <= partes.length; i += 4){
+        const c = +(partes[i] || partes[i + 2]), v = partes[i] ? +partes[i + 1] : 1, txt = limpa(partes[i + 3] || '');
+        if (!c || !txt) continue;
+        const cap = ((livros[livro] = livros[livro] || {})[c] = livros[livro][c] || {});
+        if (!cap[v]) total++; cap[v] = txt;
+      }
+    }
+    return { livros, total };
+  }
   function siglaDoTitulo(titulo){
     const t = semAc(titulo || '');
     if (/nova almeida atualizada/.test(t)) return 'NAA';
@@ -186,6 +225,7 @@
     if (/almeida revista e corrigida|\barc\b/.test(t)) return 'ARC';
     if (/nova traducao na linguagem de hoje|\bntlh\b/.test(t)) return 'NTLH';
     if (/almeida corrigida fiel|\bacf\b/.test(t)) return 'ACF';
+    if (/king james atualizada/.test(t)) return 'KJA';
     if (/king james/.test(t)) return 'KJV';
     return '';
   }
@@ -203,6 +243,7 @@
     if (r.total < 1000) r = formatoB(arquivos);
     if (r.total < 1000) r = formatoC(arquivos);
     if (r.total < 1000) r = formatoD(arquivos);
+    if (r.total < 1000) r = formatoE(arquivos);
     if (r.total < 1000) throw new Error('formato');
     return { titulo, sigla: siglaDoTitulo(titulo), livros: r.livros, total: r.total, nLivros: Object.keys(r.livros).length };
   }
@@ -260,5 +301,5 @@
     }).filter(Boolean);
     return blocos.join(' … ');
   }
-  window.PVBiblia = { versao: '2.8.3', lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
+  window.PVBiblia = { versao: '2.8.4', lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
 })();

@@ -46,7 +46,7 @@ pt: `
 <li>Ao salvar, as referências citadas no sermão que ainda estiverem sem texto são preenchidas pela Bíblia.</li>
 <li>No púlpito, uma referência sem texto cadastrado também abre direto da Bíblia.</li>
 </ol>
-<p>Use só uma Bíblia que você adquiriu. O texto fica <b>só neste aparelho</b>; importe também no iPad e no Mac, se usar os dois. Testado com NAA, NVI, ARA, ARC e NTLH (de estudo); outros EPUBs podem funcionar. Na caixa do texto, no púlpito, os botões com as siglas trocam a versão na hora. EPUBs com proteção contra cópia (DRM) não podem ser lidos.</p>
+<p>Use só uma Bíblia que você adquiriu. O texto fica <b>só neste aparelho</b>; importe também no iPad e no Mac, se usar os dois. Testado com NAA, NVI, ARA, ARC, NTLH e King James (de estudo); outros EPUBs podem funcionar. Na caixa do texto, no púlpito, os botões com as siglas trocam a versão na hora. EPUBs com proteção contra cópia (DRM) não podem ser lidos.</p>
 </details>
 
 <details><summary>3. No púlpito</summary>
@@ -155,7 +155,7 @@ en: `
 <li>When you save, references cited in the sermon that still have no text are filled from the Bible.</li>
 <li>In the pulpit, a reference with no saved passage also opens straight from the Bible.</li>
 </ol>
-<p>Only use a Bible you own. The text stays <b>only on this device</b>; import it on your iPad and Mac too if you use both. Tested with NAA, NVI, ARA, ARC and NTLH (study edition); other EPUBs may work. In the passage box in the pulpit, the abbreviation buttons switch versions instantly. EPUBs with copy protection (DRM) cannot be read.</p>
+<p>Only use a Bible you own. The text stays <b>only on this device</b>; import it on your iPad and Mac too if you use both. Tested with NAA, NVI, ARA, ARC, NTLH and King James (study editions); other EPUBs may work. In the passage box in the pulpit, the abbreviation buttons switch versions instantly. EPUBs with copy protection (DRM) cannot be read.</p>
 </details>
 
 <details><summary>3. In the pulpit</summary>
