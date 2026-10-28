@@ -54,6 +54,13 @@
 .tp-aj .opc{margin:14px 0}
 .tp-aj input[type=range]{width:100%;accent-color:var(--ouro)}
 .tp-aj a{color:var(--ouro);font-weight:700}
+.tp-medidor{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--txt2)}
+.tp-medidor .btn{padding:6px 12px}
+.tp-med{position:relative;flex:1;height:12px;border-radius:6px;background:var(--linha);overflow:hidden}
+.tp-med i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--txt2);transition:width .08s}
+.tp-med i.voz{background:#3DDC84}
+.tp-med b{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--ouro)}
+.tp-medidor small{min-width:62px;text-align:right;font-weight:700}
 `;
   document.head.appendChild(css);
 
@@ -264,14 +271,20 @@
   }
   async function ligarMic(){
     if (TP.mic) return true;
-    preparaAudio();
+    // iPad: o motor de áudio é criado AGORA, ainda dentro do toque (antes de pedir o microfone)
+    try { if (TP.actx) TP.actx.close(); } catch {}
+    TP.actx = null; preparaAudio();
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !TP.actx){ aviso('Este aparelho não deixa o app usar o microfone.'); mic.classList.add('erro'); return false; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } });
-      if (TP.actx.state === 'suspended') await TP.actx.resume();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      if (TP.actx.state !== 'running') try { await TP.actx.resume(); } catch {}
       const src = TP.actx.createMediaStreamSource(stream), an = TP.actx.createAnalyser();
-      an.fftSize = 1024; src.connect(an);
-      TP.mic = { stream, src, an, buf: new Uint8Array(an.fftSize), piso: lerLS('pv.tpPiso', 0.004), nivel: 0, ultimaVoz: 0, inicioVoz: 0 };
+      an.fftSize = 2048; an.smoothingTimeConstant = 0;
+      // no Safari o áudio só é processado se chegar à saída: liga a um volume zero (não sai som nenhum)
+      const mudo = TP.actx.createGain(); mudo.gain.value = 0;
+      src.connect(an); an.connect(mudo); mudo.connect(TP.actx.destination);
+      const flutua = typeof an.getFloatTimeDomainData === 'function';
+      TP.mic = { stream, src, an, mudo, flutua, buf: flutua ? new Float32Array(an.fftSize) : new Uint8Array(an.fftSize), piso: lerLS('pv.tpPiso2', 0.002), nivel: 0, maxNivel: 0, ultimaVoz: 0, inicioVoz: 0, desde: performance.now() };
       mic.classList.remove('erro');
       return true;
     } catch (err){
@@ -282,19 +295,23 @@
   }
   function desligarMic(){
     if (!TP.mic) return;
-    try { TP.mic.stream.getTracks().forEach(k => k.stop()); TP.mic.src.disconnect(); } catch {}
+    try { TP.mic.stream.getTracks().forEach(k => k.stop()); TP.mic.src.disconnect(); TP.mic.an.disconnect(); TP.mic.mudo.disconnect(); } catch {}
     TP.mic = null; TP.falando = false;
   }
   function nivelAgora(){
-    const m = TP.mic; m.an.getByteTimeDomainData(m.buf);
-    let s = 0; for (let i = 0; i < m.buf.length; i++){ const v = (m.buf[i] - 128) / 128; s += v * v; }
-    return Math.sqrt(s / m.buf.length);
+    // leitura fina (números decimais): a voz com a redução de ruído do iPad é baixa
+    const m = TP.mic; let s = 0;
+    if (m.flutua){ m.an.getFloatTimeDomainData(m.buf); for (let i = 0; i < m.buf.length; i++) s += m.buf[i] * m.buf[i]; }
+    else { m.an.getByteTimeDomainData(m.buf); for (let i = 0; i < m.buf.length; i++){ const v = (m.buf[i] - 128) / 128; s += v * v; } }
+    const r = Math.sqrt(s / m.buf.length);
+    if (r > m.maxNivel) m.maxNivel = r;
+    return r;
   }
   function medirMic(t){
     if (CFG.modo === 'palavras'){ TP.falando = t - TP.ultimoOuvido < 1500; return; }
     const m = TP.mic; if (!m){ TP.falando = false; return; }
     const rms = nivelAgora(); m.nivel = rms;
-    const limiar = Math.max(m.piso * (SENS[CFG.sens] || 3), 0.006);
+    const limiar = Math.max(m.piso * (SENS[CFG.sens] || 3), 0.0015);
     if (rms > limiar){
       if (!m.inicioVoz) m.inicioVoz = t;
       if (t - m.inicioVoz > 120){ TP.falando = true; m.ultimaVoz = t; }
@@ -316,7 +333,7 @@
     barras.forEach((b, i) => { b.style.height = (4 + Math.max(0, Math.min(1, nivel * 1.3 - i * 0.18)) * 14) + 'px'; });
     mic.classList.toggle('voz', !!TP.falando && TP.rodando);
     const txt = !TP.rodando ? 'pausado'
-      : CFG.modo === 'voz' ? (!TP.mic ? 'sem microfone' : TP.falando ? 'captando' : 'em silêncio')
+      : CFG.modo === 'voz' ? (!TP.mic ? 'sem microfone' : TP.falando ? 'captando' : (TP.mic.maxNivel === 0 && t - TP.mic.desde > 3000) ? 'microfone sem sinal' : 'em silêncio')
       : (!TP.rec ? 'sem reconhecimento' : t - TP.ultimoAcerto < 2500 ? 'acompanhando' : TP.falando ? 'procurando no texto' : 'ouvindo');
     if (rot.textContent !== txt) rot.textContent = txt;
   }
@@ -328,8 +345,8 @@
     await new Promise(ok => { const f = () => { if (!TP.mic) return ok(); amostras.push(nivelAgora()); performance.now() < fim ? setTimeout(f, 50) : ok(); }; f(); });
     if (!amostras.length) return;
     amostras.sort((a, b) => a - b);
-    const piso = Math.max(0.001, amostras[Math.floor(amostras.length * 0.6)] * 1.1);
-    gravarLS('pv.tpPiso', piso); if (TP.mic) TP.mic.piso = piso;
+    const piso = Math.max(0.0005, amostras[Math.floor(amostras.length * 0.6)] * 1.1);
+    gravarLS('pv.tpPiso2', piso); if (TP.mic) TP.mic.piso = piso;
     aviso('Microfone calibrado para este ambiente');
     if (CFG.modo !== 'voz' && !TP.rodando) desligarMic();
   }
@@ -455,6 +472,7 @@
         <div class="opc"><label class="rot">Sensibilidade do microfone (modo “Pela voz”)</label>
           <div class="seg">${['baixa', 'media', 'alta'].map(s => `<button data-sens="${s}" class="${CFG.sens === s ? 'on' : ''}">${{ baixa: 'Baixa', media: 'Média', alta: 'Alta' }[s]}</button>`).join('')}</div>
           <button class="btn" id="tpa-calibrar" style="width:100%;justify-content:center;margin-top:10px">🎙 Calibrar no silêncio (3 segundos)</button>
+          <div class="tp-medidor"><button class="btn" id="tpa-testar">Testar</button><span>Microfone agora</span><div class="tp-med"><i id="tpa-nivel"></i><b id="tpa-limiar"></b></div><small id="tpa-med-txt">desligado</small></div>
           <p class="dica">Faça antes do culto, no lugar onde vai pregar. Em ambiente barulhento, use “Baixa”.</p></div>
         <details class="opc"><summary class="rot" style="cursor:pointer">Avançado: espelhamento (teleprompter de vidro)</summary>
           <div class="seg" style="margin-top:10px"><button data-esp="h" class="${CFG.espH ? 'on' : ''}">↔ Horizontal</button><button data-esp="v" class="${CFG.espV ? 'on' : ''}">↕ Vertical</button></div>
@@ -470,10 +488,21 @@
       else if (b.dataset.sens){ CFG.sens = b.dataset.sens; cx.querySelectorAll('[data-sens]').forEach(x => x.classList.toggle('on', x === b)); }
       else if (b.dataset.esp){ const k = b.dataset.esp === 'h' ? 'espH' : 'espV'; CFG[k] = !CFG[k]; b.classList.toggle('on', CFG[k]); }
       else if (b.id === 'tpa-calibrar'){ calibrar(); return; }
+      else if (b.id === 'tpa-testar'){ ligarMic(); return; }
       else if (b.id === 'tpa-creditos'){ e.preventDefault(); fecharModal(); abrirCreditos(); return; }
       else return;
       salvar(); aplicar();
     };
+    // medidor ao vivo: barra = sua voz; traço = ponto a partir do qual o app considera "voz"
+    clearInterval(TP._med);
+    TP._med = setInterval(() => {
+      const n = $('#tpa-nivel'); if (!n){ clearInterval(TP._med); if (CFG.modo !== 'voz' || !TP.rodando) desligarMic(); return; }
+      const m = TP.mic; if (!m){ $('#tpa-med-txt').textContent = 'desligado'; return; }
+      const r = nivelAgora(), lim = Math.max(m.piso * (SENS[CFG.sens] || 3), 0.0015), esc = v => Math.min(100, Math.sqrt(v / 0.2) * 100);
+      n.style.width = esc(r) + '%'; n.classList.toggle('voz', r > lim);
+      $('#tpa-limiar').style.left = esc(lim) + '%';
+      $('#tpa-med-txt').textContent = r > lim ? 'voz' : m.maxNivel === 0 ? 'sem sinal' : 'silêncio';
+    }, 80);
     $('#tpa-linha-in').oninput = e => { CFG.linha = +e.target.value / 100; $('#tpa-linha').textContent = e.target.value + '%'; salvar(); aplicar(); };
   }
   function abrirCreditos(){

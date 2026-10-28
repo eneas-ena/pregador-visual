@@ -200,6 +200,13 @@ exato: {
   'Sem internet no iPad · a projeção volta quando a conexão voltar': 'Offline on the iPad · projection resumes when the connection returns',
   'Sermão': 'Sermon', 'Textos bíblicos': 'Bible passages', 'Pregador Visual · página': 'Pregador Visual · page', '· Texto:': '· Passage:',
   // teleprompter e atualização
+  "Microfone agora": "Microphone now",
+  "Testar": "Test",
+  "desligado": "off",
+  "voz": "voice",
+  "silêncio": "silence",
+  "sem sinal": "no signal",
+  "microfone sem sinal": "microphone has no signal",
   "Teleprompter": "Teleprompter",
   "Teleprompter: toque em ▶ para começar": "Teleprompter: tap ▶ to start",
   "Constante": "Steady",

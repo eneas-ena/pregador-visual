@@ -115,7 +115,7 @@ pt: `
 <p>No púlpito, toque no botão do teleprompter (ao lado do marca-texto). O texto fica grande, com uma <b>faixa de leitura</b>; a hora e o cronômetro continuam no topo. Toque em ▶ para começar.</p>
 <ul>
 <li><b>Constante:</b> rola numa velocidade fixa. Ajuste com − e +.</li>
-<li><b>Pela voz:</b> rola enquanto você fala e para quando você se cala. Ouve só o volume, então funciona sem internet. O selo ao lado do cronômetro fica verde quando capta a sua voz. Antes do culto, em Ajustes, use <b>Calibrar no silêncio</b>.</li>
+<li><b>Pela voz:</b> rola enquanto você fala e para quando você se cala. Ouve só o volume, então funciona sem internet. O selo ao lado do cronômetro fica verde quando capta a sua voz. Antes do culto, em Ajustes, use <b>Calibrar no silêncio</b>. Em Ajustes também há o medidor <b>Microfone agora</b>: toque em <b>Testar</b> e fale; a barra fica verde quando passa do traço dourado (o ponto em que o app considera voz).</li>
 <li><b>Palavra a palavra (experimental):</b> o iPad reconhece a fala e destaca a palavra que você está lendo. Precisa de internet. Pode se perder em nomes bíblicos ou quando você sai do roteiro; aí segue devagar até reencontrar o texto.</li>
 <li><b>Toques no texto:</b> terço de cima volta, meio pausa/continua, terço de baixo avança. O controle remoto (setas) também anda.</li>
 <li><b>Ajustes:</b> tamanho da letra, cor do destaque, posição da faixa, tela cheia, sensibilidade do microfone e espelhamento (só para vidro refletor).</li>
@@ -241,7 +241,7 @@ en: `
 <p>In the pulpit, tap the teleprompter button (next to the highlighter). The text gets large, with a <b>reading band</b>; the clock and timer stay at the top. Tap ▶ to start.</p>
 <ul>
 <li><b>Steady:</b> scrolls at a fixed speed. Adjust with − and +.</li>
-<li><b>By voice:</b> scrolls while you speak and stops when you are silent. It only listens to the volume, so it works offline. The badge next to the timer turns green when it hears you. Before the service, use <b>Calibrate in silence</b> in Settings.</li>
+<li><b>By voice:</b> scrolls while you speak and stops when you are silent. It only listens to the volume, so it works offline. The badge next to the timer turns green when it hears you. Before the service, use <b>Calibrate in silence</b> in Settings. Settings also has the <b>Microphone now</b> meter: tap <b>Test</b> and speak; the bar turns green when it passes the gold mark (the point where the app counts it as voice).</li>
 <li><b>Word by word (experimental):</b> the iPad recognizes your speech and highlights the word you are reading. Needs internet. It can get lost on biblical names or when you leave the script; then it moves slowly until it finds the text again.</li>
 <li><b>Taps on the text:</b> top third goes back, middle pauses/resumes, bottom third moves forward. The remote (arrow keys) works too.</li>
 <li><b>Settings:</b> font size, highlight color, band position, full screen, microphone sensitivity and mirroring (only for a beam-splitter glass).</li>
