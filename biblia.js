@@ -301,5 +301,5 @@
     }).filter(Boolean);
     return blocos.join(' … ');
   }
-  window.PVBiblia = { versao: '2.8.4', lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
+  window.PVBiblia = { versao: '2.9.0', lerEpub, guardar, apagar, texto, idDoNome, siglaDoTitulo };
 })();

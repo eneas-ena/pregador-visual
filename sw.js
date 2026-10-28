@@ -1,9 +1,9 @@
 // Pregador Visual — service worker (funciona sem internet)
-const VERSAO = '2.8.4';
+const VERSAO = '2.9.0';
 // nome diferente do Pregador pessoal ("pregador-…"), para um nunca apagar o cache do outro
 const CACHE = 'pvisual-' + VERSAO;
 const ARQUIVOS = [
-  './', './index.html', './config.js', './traducao-en.js', './ajuda.js', './fflate.min.js', './biblia.js', './manifest.json', './mammoth.min.js',
+  './', './index.html', './config.js', './traducao-en.js', './ajuda.js', './fflate.min.js', './biblia.js', './teleprompter.js', './manifest.json', './mammoth.min.js',
   './supabase.min.js', './docx.min.js', './pdf.min.mjs', './pdf.worker.min.mjs', './projetor.html',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'
 ];
@@ -25,6 +25,9 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+
+  // conferência de versão nova: sempre direto do GitHub, sem guardar
+  if (url.searchParams.has('nc')) return;
 
   // Banco de dados: nunca guardar em cache (o app cuida disso sozinho)
   if (url.hostname.endsWith('supabase.co')) return;

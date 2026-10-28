@@ -283,6 +283,7 @@ mark.mk-vermelho{background:rgba(229,72,77,.40)} :root[data-theme="light"] mark.
 .meta.pronto{color:#3CB371;font-weight:600}
 .ajuda{max-width:820px;margin:0 auto;font-size:17px;line-height:1.6}
 .ajuda .aj-lead{color:var(--txt2);margin-bottom:16px}
+.ajuda .aj-lic{font-size:12.5px;color:var(--txt2);line-height:1.5}
 .ajuda details{background:var(--card);border:1px solid var(--linha);border-radius:14px;margin-bottom:12px;overflow:hidden}
 .ajuda summary{cursor:pointer;padding:15px 18px;font-family:Cinzel,serif;color:var(--ouro);font-size:17px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .ajuda summary::-webkit-details-marker{display:none}
@@ -360,6 +361,7 @@ li > .nota-linha{margin:.3em 0}
 .ct-cab{display:flex;align-items:center;gap:12px;padding:12px 14px 10px 20px;border-bottom:1px solid var(--linha)}
 .ct-rot{font-size:11px;letter-spacing:.14em;color:var(--ouro);font-weight:700;white-space:nowrap}
 .ct-cab b{flex:1;font-size:21px}
+.aviso-versao{position:fixed;z-index:60;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 12px 10px 18px;background:var(--card);border:1.5px solid var(--ouro);border-radius:14px;box-shadow:var(--sombra);font-size:15px;max-width:calc(100vw - 24px)}
 .ct-cab{flex-wrap:wrap}
 #ct-versoes{display:flex;gap:6px;flex-wrap:wrap}
 #ct-versoes:empty{display:none}
@@ -761,6 +763,8 @@ li > .nota-linha{margin:.3em 0}
     <p class="dica" id="tecla-info"></p></div>
   <div class="opc"><label class="rot">Projeção (data-show)</label><div id="cfg-codigo">—</div></div>
   <div class="opc"><label class="rot">Tela</label><p class="dica" id="tela-status">—</p></div>
+  <div class="opc"><label class="rot">Atualização</label><button class="btn" onclick="atualizarApp()" style="width:100%;justify-content:center">🔄 Atualizar app</button>
+    <p class="dica">Busca a versão mais nova no GitHub e recarrega o app.</p></div>
   <p class="versao" data-versao></p>
 </aside>
 
@@ -774,7 +778,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.8.4';
+const VERSAO = '2.9.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -992,6 +996,7 @@ window.addEventListener('offline', mostrarPendencias);
 function irPara(id){
   $$('.tela').forEach(t => t.classList.toggle('ativa', t.id === id));
   if (id !== 'pulpito') liberarTela();
+  if (id !== 'pulpito' && typeof versaoNova !== 'undefined' && versaoNova) setTimeout(mostrarAvisoVersao, 400);
   if (id !== 'pulpito' && window._recarregarAoSair){ window._recarregarAoSair = false; setTimeout(() => location.reload(), 300); }
 }
 
@@ -1744,6 +1749,7 @@ $('#btn-conta').addEventListener('click', async () => {
       <button class="btn" id="bb-importar" style="margin-top:10px;width:100%;justify-content:center">📖 Importar Bíblia (EPUB)</button>
       <p class="dica" style="margin-top:6px">Use uma Bíblia que você adquiriu. O texto fica só neste aparelho: não vai para a nuvem nem para outros pastores. Testado com NAA, NVI, ARA, ARC, NTLH e King James (de estudo); outros EPUBs podem funcionar.</p>
     </div>
+    <div class="conta-linha" style="align-items:center"><span>App · v${VERSAO}</span><button class="btn" onclick="atualizarApp()">🔄 Atualizar app</button></div>
     <div class="conta-linha" style="align-items:center"><span>Idioma / Language</span>
       <div class="seg" style="min-width:220px"><button class="${IDIOMA === 'pt' ? 'on' : ''}" onclick="trocarIdioma('pt')">Português</button><button class="${IDIOMA === 'en' ? 'on' : ''}" onclick="trocarIdioma('en')">English</button></div></div>
     <div class="conta-linha" style="display:block"><span>Backup e restauração</span>
@@ -2279,11 +2285,12 @@ function abrirAjuda(){
   const atual = $('.tela.ativa'); telaAntesAjuda = atual && atual.id !== 'ajuda' ? atual.id : 'inicio';
   const A = window.PV_AJUDA || {};
   $('#ajuda-corpo').innerHTML = A[IDIOMA] || A.pt || '';
+  if (!(USUARIO && USUARIO.admin)) $$('#ajuda-corpo .so-admin').forEach(x => x.remove());
   irPara('ajuda'); $('#ajuda .corpo').scrollTop = 0;
 }
 $('#btn-ajuda').addEventListener('click', abrirAjuda);
 $('#ac-ajuda').addEventListener('click', abrirAjuda);
-$('#aj-voltar').addEventListener('click', () => { irPara(telaAntesAjuda); if (telaAntesAjuda === 'inicio') desenharLista(); });
+$('#aj-voltar').addEventListener('click', () => { irPara(telaAntesAjuda); if (telaAntesAjuda === 'inicio') desenharLista(); if (telaAntesAjuda === 'pulpito') segurarTela(); });
 
 /* ===================== ADMINISTRAÇÃO (só para o administrador) ===================== */
 const LIMITE_PLANO_MB = 1024;            // plano gratuito do Supabase: 1 GB de arquivos para todos
@@ -2945,10 +2952,11 @@ function pintarMarcas(){
 // modo automático: o slide vai para o telão quando a marcação passa pela linha de leitura (1/3 da tela)
 let slAuto = lerLS('pv.slAuto', false), ultimoAuto = -1;
 function marcaNaLinha(){
-  const L = $('#leitura'), linha = L.getBoundingClientRect().top + L.clientHeight / 3;
-  const lista = marcasSlide();
+  // linha de leitura: 1/3 da tela, ou a faixa do teleprompter quando ele está ligado
+  const L = $('#leitura'), linha = L.getBoundingClientRect().top + L.clientHeight * (window.linhaLeitura ? linhaLeitura() : 1 / 3);
+  const lista = marcasSlide(), topo = el => window.topoNaTela ? topoNaTela(el) : el.getBoundingClientRect().top;
   if (lista.length && L.scrollTop + L.clientHeight >= L.scrollHeight - 4) return lista.length - 1;   // chegou ao fim do sermão
-  let idx = -1; lista.forEach((m, i) => { if (m.getBoundingClientRect().top <= linha) idx = i; });
+  let idx = -1; lista.forEach((m, i) => { if (topo(m) <= linha) idx = i; });
   return idx;
 }
 function rearmarAuto(){ ultimoAuto = marcaNaLinha(); }      // segue a partir da próxima marcação
@@ -3261,6 +3269,40 @@ async function segurarTela(){
 function liberarTela(){ if (trava){ trava.release().catch(() => {}); trava = null; } }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && $('#pulpito').classList.contains('ativa') && !trava) segurarTela(); });
 
+/* ===================== ATUALIZAÇÃO DO APP ===================== */
+// lê a versão publicada no GitHub e compara com a que está rodando
+async function versaoPublicada(){
+  try { const r = await fetch('index.html?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; const m = (await r.text()).match(/const VERSAO = '([^']+)'/); return m ? m[1] : null; }
+  catch { return null; }
+}
+let versaoNova = null;
+async function verificarVersaoNova(){
+  if (!navigator.onLine) return;
+  const v = await versaoPublicada();
+  if (v && v !== VERSAO){ versaoNova = v; mostrarAvisoVersao(); }
+}
+function mostrarAvisoVersao(){
+  if (!versaoNova || $('#pulpito').classList.contains('ativa')) return;      // no púlpito não atrapalha: avisa ao sair
+  let a = $('#aviso-versao');
+  if (!a){ a = document.createElement('div'); a.id = 'aviso-versao'; a.className = 'aviso-versao'; document.body.appendChild(a); }
+  a.innerHTML = `<span>Versão nova disponível: <b>v${esc(versaoNova)}</b></span><button class="btn prim" id="av-atualizar">Atualizar agora</button><button class="icone" id="av-fechar" title="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+  $('#av-atualizar').onclick = atualizarApp;
+  $('#av-fechar').onclick = () => a.remove();
+}
+// limpa o cache e o service worker deste app e recarrega do GitHub
+async function atualizarApp(){
+  if (!navigator.onLine) return aviso('Sem internet: conecte o aparelho para atualizar.');
+  aviso('Atualizando o app…', 6000);
+  try {
+    if ('serviceWorker' in navigator){ const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); }
+    if (window.caches){ const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('pvisual-')).map(k => caches.delete(k))); }
+  } catch {}
+  location.replace(location.pathname + '?atualizado=' + Date.now());
+}
+setTimeout(verificarVersaoNova, 6000);
+setInterval(verificarVersaoNova, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verificarVersaoNova(); });
+
 /* ===================== INÍCIO ===================== */
 if ('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(r => {
@@ -3293,5 +3335,6 @@ async function iniciar(){
 window.addEventListener('online', verificarConta);
 iniciar();
 </script>
+<script src="teleprompter.js"></script>
 </body>
 </html>

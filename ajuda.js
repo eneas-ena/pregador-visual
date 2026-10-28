@@ -110,6 +110,24 @@ pt: `
 </ul>
 <p>Outra dúvida? Fale com o administrador do Pregador Visual.</p>
 </details>
+
+<details class="so-admin"><summary>7. Teleprompter (em teste)</summary>
+<p>No púlpito, toque no botão do teleprompter (ao lado do marca-texto). O texto fica grande, com uma <b>faixa de leitura</b>; a hora e o cronômetro continuam no topo. Toque em ▶ para começar.</p>
+<ul>
+<li><b>Constante:</b> rola numa velocidade fixa. Ajuste com − e +.</li>
+<li><b>Pela voz:</b> rola enquanto você fala e para quando você se cala. Ouve só o volume, então funciona sem internet. O selo ao lado do cronômetro fica verde quando capta a sua voz. Antes do culto, em Ajustes, use <b>Calibrar no silêncio</b>.</li>
+<li><b>Palavra a palavra (experimental):</b> o iPad reconhece a fala e destaca a palavra que você está lendo. Precisa de internet. Pode se perder em nomes bíblicos ou quando você sai do roteiro; aí segue devagar até reencontrar o texto.</li>
+<li><b>Toques no texto:</b> terço de cima volta, meio pausa/continua, terço de baixo avança. O controle remoto (setas) também anda.</li>
+<li><b>Ajustes:</b> tamanho da letra, cor do destaque, posição da faixa, tela cheia, sensibilidade do microfone e espelhamento (só para vidro refletor).</li>
+<li>A faixa de leitura também dispara os <b>slides automáticos</b>.</li>
+</ul>
+<p>Na primeira vez, o iPad pede permissão para o microfone. Se negou sem querer: Ajustes do iPad › Safari › Microfone.</p>
+</details>
+<details id="aj-creditos"><summary>Créditos</summary>
+<p>O <b>modo teleprompter</b> foi inspirado no <b>Textream</b>, de Fatih Kadir Akın (github.com/f/textream), distribuído sob a licença MIT. O Pregador Visual não usa o código do Textream: o teleprompter foi escrito do zero em JavaScript, seguindo as mesmas ideias (rolagem por voz e acompanhamento palavra por palavra).</p>
+<p>Leitura de Bíblias em EPUB: biblioteca <b>fflate</b> (licença MIT). Leitura de arquivos Word: <b>mammoth</b> (BSD). Geração de arquivos Word: <b>docx</b> (MIT). Leitura de PDF: <b>PDF.js</b> (Apache 2.0). Banco de dados: <b>Supabase</b> (MIT).</p>
+<p class="aj-lic"><b>Licença MIT do Textream</b><br>Copyright (c) Fatih Kadir Akın<br><br>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:<br><br>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.<br><br>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+</details>
 `,
 en: `
 <p class="aj-lead">Pregador Visual puts your sermon, Bible passages, clock, timer and projector slides on one iPad screen. Tap a topic to open it.</p>
@@ -218,6 +236,23 @@ en: `
 <li><b>Light or dark mode:</b> the sun or moon at the top of the screen.</li>
 </ul>
 <p>Other questions? Contact the Pregador Visual administrator.</p>
+</details>
+<details class="so-admin"><summary>7. Teleprompter (beta)</summary>
+<p>In the pulpit, tap the teleprompter button (next to the highlighter). The text gets large, with a <b>reading band</b>; the clock and timer stay at the top. Tap ▶ to start.</p>
+<ul>
+<li><b>Steady:</b> scrolls at a fixed speed. Adjust with − and +.</li>
+<li><b>By voice:</b> scrolls while you speak and stops when you are silent. It only listens to the volume, so it works offline. The badge next to the timer turns green when it hears you. Before the service, use <b>Calibrate in silence</b> in Settings.</li>
+<li><b>Word by word (experimental):</b> the iPad recognizes your speech and highlights the word you are reading. Needs internet. It can get lost on biblical names or when you leave the script; then it moves slowly until it finds the text again.</li>
+<li><b>Taps on the text:</b> top third goes back, middle pauses/resumes, bottom third moves forward. The remote (arrow keys) works too.</li>
+<li><b>Settings:</b> font size, highlight color, band position, full screen, microphone sensitivity and mirroring (only for a beam-splitter glass).</li>
+<li>The reading band also triggers <b>automatic slides</b>.</li>
+</ul>
+<p>The first time, the iPad asks for microphone permission. If you denied it by mistake: iPad Settings › Safari › Microphone.</p>
+</details>
+<details id="aj-creditos"><summary>Credits</summary>
+<p>The <b>teleprompter mode</b> was inspired by <b>Textream</b>, by Fatih Kadir Akın (github.com/f/textream), released under the MIT license. Pregador Visual does not use Textream's code: the teleprompter was written from scratch in JavaScript, following the same ideas (voice scrolling and word-by-word tracking).</p>
+<p>EPUB Bible reading: <b>fflate</b> library (MIT). Word import: <b>mammoth</b> (BSD). Word export: <b>docx</b> (MIT). PDF reading: <b>PDF.js</b> (Apache 2.0). Database: <b>Supabase</b> (MIT).</p>
+<p class="aj-lic"><b>Textream MIT License</b><br>Copyright (c) Fatih Kadir Akın<br><br>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:<br><br>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.<br><br>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
 </details>
 `
 };
