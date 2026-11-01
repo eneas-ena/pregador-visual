@@ -200,6 +200,9 @@ exato: {
   'Sem internet no iPad · a projeção volta quando a conexão voltar': 'Offline on the iPad · projection resumes when the connection returns',
   'Sermão': 'Sermon', 'Textos bíblicos': 'Bible passages', 'Pregador Visual · página': 'Pregador Visual · page', '· Texto:': '· Passage:',
   // teleprompter e atualização
+  "Avisos no telão pelo celular (para quem cuida do data-show)": "Screen notices from a phone (for whoever runs the projector)",
+  "Quem está no notebook também pode pôr um aviso pela própria tela do projetor: tecla": "Whoever is at the laptop can also post a notice from the projector screen itself: key",
+  "ou o botão do megafone.": "or the megaphone button.",
   "Microfone agora": "Microphone now",
   "Testar": "Test",
   "desligado": "off",

@@ -48,6 +48,27 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .cod-atual{color:var(--txt2);font-size:16px}.cod-atual b{color:var(--ouro);letter-spacing:.2em}
 .link{color:var(--ouro);text-decoration:underline;font-size:15px}
 .dica-cod{color:var(--txt2);font-size:15px;max-width:520px;line-height:1.45}
+
+/* letreiro de avisos (frase correndo no alto ou no rodapé da tela) */
+#letreiro{position:fixed;left:0;right:0;top:0;z-index:20;overflow:hidden;white-space:nowrap;background:rgba(0,0,0,.78);color:#fff;border-bottom:3px solid #C9A227;
+  font-weight:600;font-size:var(--ltfs,6vh);line-height:1.25;padding:.3em 0;pointer-events:none}
+#letreiro.base{top:auto;bottom:0;border-bottom:0;border-top:3px solid #C9A227}
+#letreiro span{display:inline-block;will-change:transform;padding-left:.2em}
+/* painel do operador (no notebook) */
+#painel-aviso{position:fixed;z-index:30;left:50%;bottom:16px;transform:translateX(-50%);width:min(620px,calc(100vw - 24px));background:#0F1B33;color:#F2EEE3;border:1.5px solid #C9A227;border-radius:16px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.5);font-size:15px}
+#painel-aviso h2{font-family:Cinzel,serif;color:#C9A227;font-size:18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+#painel-aviso textarea{width:100%;min-height:70px;font:inherit;font-size:18px;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(201,162,39,.4);background:rgba(255,255,255,.06);color:#F2EEE3;resize:vertical}
+#painel-aviso .linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+#painel-aviso .linha>span{min-width:86px;color:#B9C0D3;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.pv-seg{display:inline-flex;border:1px solid rgba(201,162,39,.4);border-radius:10px;overflow:hidden}
+.pv-seg button{padding:7px 12px;font-size:14px}.pv-seg button.on{background:#C9A227;color:#0F1B33;font-weight:700}
+#painel-aviso .acoes{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+#painel-aviso .recentes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#painel-aviso .recentes button{font-size:13px;padding:5px 10px;border-radius:999px;border:1px solid rgba(201,162,39,.35);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#painel-aviso .dica{color:#B9C0D3;font-size:13px;line-height:1.45;margin-top:10px}
+#painel-aviso .dica b{color:#C9A227;word-break:break-all}
+#aviso-on{display:none;color:#3DDC84;font-weight:700;font-size:13px}
+body.com-aviso #aviso-on{display:inline}
 </style>
 </head>
 <body>
@@ -73,15 +94,30 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <span class="versao" data-versao></span>
 </div>
 
+<div id="letreiro" class="oculto"><span id="lt-texto"></span></div>
+
+<div id="painel-aviso" class="oculto">
+  <h2><span>Aviso no telão <span id="aviso-on">● no ar</span></span><button class="botao" id="av-fechar" type="button" title="Fechar">✕</button></h2>
+  <textarea id="av-texto" maxlength="400" placeholder="Ex.: Atenção: o carro placa ABC-1234 está com o farol aceso."></textarea>
+  <div class="recentes" id="av-recentes"></div>
+  <div class="linha"><span>Velocidade</span><div class="pv-seg" data-op="vel"><button data-v="lento">Lento</button><button data-v="normal">Normal</button><button data-v="rapido">Rápido</button></div></div>
+  <div class="linha"><span>Repetir</span><div class="pv-seg" data-op="rep"><button data-v="1">1 vez</button><button data-v="3">3 vezes</button><button data-v="0">Sem parar</button></div></div>
+  <div class="linha"><span>Posição</span><div class="pv-seg" data-op="pos"><button data-v="topo">No alto</button><button data-v="base">No rodapé</button></div>
+    <span style="min-width:0;margin-left:10px">Letra</span><div class="pv-seg" data-op="tam"><button data-v="p">P</button><button data-v="m">M</button><button data-v="g">G</button></div></div>
+  <div class="acoes"><button class="botao prim" id="av-mostrar" type="button">▶ Mostrar aviso</button><button class="botao" id="av-parar" type="button">■ Tirar aviso</button></div>
+  <p class="dica" id="av-dica-cel">Se esta tela estiver espelhada no telão, todos veem você digitar. Para digitar escondido, use o celular: <b id="av-link"></b></p>
+</div>
+
 <div id="cantos">
   <span class="estado" id="estado2"><i></i><span>—</span></span>
+  <button id="btn-aviso" title="Aviso no telão (tecla A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/></svg></button>
   <span class="versao" data-versao></span>
   <button id="tema" title="Fundo claro/escuro"></button>
   <button id="cheia2" title="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
 </div>
 
 <script>
-const VERSAO = '2.9.1';
+const VERSAO = '2.9.2';
 const { SB_URL, SB_KEY } = window.PV_CONFIG;
 const $ = s => document.querySelector(s);
 document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
@@ -98,7 +134,11 @@ const EN = {
   'Aguardando o iPad…': 'Waiting for the iPad…', 'iPad conectado': 'iPad connected', 'Sem conexão com a internet': 'No internet connection',
   'iPad desconectado · o último slide continua na tela': 'iPad disconnected · the last slide stays on screen',
   'Fundo claro/escuro': 'Light/dark background',
-  'Nada chegou ainda? Se o pastor gerou um código novo, toque em “trocar” e digite o novo código.': 'Nothing yet? If the pastor generated a new code, tap “change” and type the new code.', 'Tela cheia ': 'Full screen'
+  'Nada chegou ainda? Se o pastor gerou um código novo, toque em “trocar” e digite o novo código.': 'Nothing yet? If the pastor generated a new code, tap “change” and type the new code.', 'Tela cheia ': 'Full screen',
+  'Aviso no telão': 'Notice on screen', '● no ar': '● on air', 'Fechar': 'Close', 'Velocidade': 'Speed', 'Lento': 'Slow', 'Normal': 'Normal', 'Rápido': 'Fast',
+  'Repetir': 'Repeat', '1 vez': 'Once', '3 vezes': '3 times', 'Sem parar': 'Nonstop', 'Posição': 'Position', 'No alto': 'Top', 'No rodapé': 'Bottom', 'Letra': 'Size',
+  '▶ Mostrar aviso': '▶ Show notice', '■ Tirar aviso': '■ Remove notice', 'Aviso no telão (tecla A)': 'Notice on screen (key A)',
+  'Se esta tela estiver espelhada no telão, todos veem você digitar. Para digitar escondido, use o celular:': 'If this screen is mirrored on the projector, everyone sees you typing. To type privately, use your phone:'
 };
 const T = s => IDIOMA === 'en' && EN[s] ? EN[s] : s;
 if (IDIOMA === 'en'){
@@ -106,6 +146,7 @@ if (IDIOMA === 'en'){
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
   while ((n = w.nextNode())){ const k = n.nodeValue.trim(); if (k && EN[k]) n.nodeValue = n.nodeValue.replace(k, EN[k]); }
   document.querySelectorAll('[title]').forEach(el => { const k = el.getAttribute('title'); if (EN[k]) el.setAttribute('title', EN[k]); });
+  const ta = document.getElementById('av-texto'); if (ta) ta.placeholder = 'E.g.: Attention: the car with plate ABC-1234 has its lights on.';
 }
 
 /* tema (fundo das bordas e tela de espera) */
@@ -146,6 +187,63 @@ function mostrar(url){
   if (outra.src === url && outra.complete){ outra.onload = null; trocar(); }
   else { outra.onload = trocar; outra.src = url; }
 }
+
+/* ===== letreiro de avisos ===== */
+// pode vir do painel deste notebook (tecla A ou botão do megafone) ou do celular (aviso.html)
+const LT_VEL = { lento: 110, normal: 170, rapido: 260 };          // pixels por segundo numa tela de 1280 de largura
+const LT_TAM = { p: '4.2vh', m: '6vh', g: '8.5vh' };
+let ltAnim = null;
+let avOpc = { vel: 'normal', rep: '3', pos: 'topo', tam: 'm' };
+try { Object.assign(avOpc, JSON.parse(localStorage.getItem('pv.aviso.opc') || '{}')); } catch {}
+function mostrarAviso(a){
+  const texto = String(a.texto || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+  tirarAviso(true);
+  if (!texto) return;
+  const lt = $('#letreiro'), sp = $('#lt-texto');
+  lt.classList.toggle('base', a.pos === 'base');
+  lt.style.setProperty('--ltfs', LT_TAM[a.tam] || LT_TAM.m);
+  sp.textContent = texto;
+  lt.classList.remove('oculto');
+  const W = lt.clientWidth, w = sp.offsetWidth;
+  const vel = (LT_VEL[a.vel] || LT_VEL.normal) * (W / 1280);
+  const rep = +a.rep === 0 ? Infinity : Math.max(1, Math.min(20, +a.rep || 3));
+  ltAnim = sp.animate([{ transform: `translateX(${W}px)` }, { transform: `translateX(${-w}px)` }], { duration: (W + w) / vel * 1000, iterations: rep, easing: 'linear' });
+  ltAnim.onfinish = () => tirarAviso();
+  document.body.classList.add('com-aviso');
+}
+function tirarAviso(semAvisar){
+  if (ltAnim){ ltAnim.onfinish = null; ltAnim.cancel(); ltAnim = null; }
+  $('#letreiro').classList.add('oculto'); document.body.classList.remove('com-aviso');
+  if (!semAvisar && canal) canal.send({ type: 'broadcast', event: 'aviso-ok', payload: { noAr: false } }).catch(() => {});
+}
+// painel no notebook
+function pintarOpc(){ document.querySelectorAll('#painel-aviso .pv-seg').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(avOpc[g.dataset.op]) === b.dataset.v))); }
+function recentes(){ try { return JSON.parse(localStorage.getItem('pv.aviso.recentes') || '[]'); } catch { return []; } }
+function pintarRecentes(){
+  const box = $('#av-recentes'); box.innerHTML = '';
+  recentes().forEach(t => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.title = t; b.onclick = () => { $('#av-texto').value = t; }; box.appendChild(b); });
+}
+function guardarRecente(t){ const l = [t, ...recentes().filter(x => x !== t)].slice(0, 6); try { localStorage.setItem('pv.aviso.recentes', JSON.stringify(l)); } catch {} }
+function abrirPainelAviso(){
+  const c = $('#cod-atual').textContent;
+  const link = location.href.replace(/projetor\.html.*$/, 'aviso.html') + (c ? '?codigo=' + c : '');
+  $('#av-link').textContent = link;
+  pintarOpc(); pintarRecentes();
+  $('#painel-aviso').classList.remove('oculto'); setTimeout(() => $('#av-texto').focus(), 30);
+}
+function fecharPainelAviso(){ $('#painel-aviso').classList.add('oculto'); }
+$('#btn-aviso').onclick = abrirPainelAviso;
+$('#av-fechar').onclick = fecharPainelAviso;
+document.querySelectorAll('#painel-aviso .pv-seg').forEach(g => g.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; avOpc[g.dataset.op] = b.dataset.v; try { localStorage.setItem('pv.aviso.opc', JSON.stringify(avOpc)); } catch {} pintarOpc(); }));
+$('#av-mostrar').onclick = () => { const t = $('#av-texto').value.trim(); if (!t) return $('#av-texto').focus(); guardarRecente(t); mostrarAviso({ texto: t, ...avOpc }); fecharPainelAviso(); };
+$('#av-parar').onclick = () => { tirarAviso(); };
+$('#av-texto').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); $('#av-mostrar').click(); } e.stopPropagation(); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'a' || e.key === 'A'){ e.preventDefault(); $('#painel-aviso').classList.contains('oculto') ? abrirPainelAviso() : fecharPainelAviso(); }
+  else if (e.key === 'Escape' && !$('#painel-aviso').classList.contains('oculto')) fecharPainelAviso();
+});
+$('#painel-aviso').addEventListener('dblclick', e => e.stopPropagation());   // duplo clique no painel não liga/desliga a tela cheia
 
 /* conexão com o iPad */
 function estado(tipo, txt){ ['#estado', '#estado2'].forEach(s => { $(s).className = 'estado ' + tipo; $(s + ' span').textContent = txt.split(' · ').map((p, i) => i ? p : T(p)).join(' · ').replace(/^iPad desconectado · o último slide continua na tela$/, T('iPad desconectado · o último slide continua na tela')); }); }
@@ -199,6 +297,14 @@ function conectar(codigo){
     ultimoToque = e.t || 0;
     const url = (!e.preta && e.atual && e.slides) ? e.slides[e.atual - 1] : null;
     mostrar(url);
+  });
+  // avisos vindos do celular (aviso.html): mostra e responde que recebeu
+  canal.on('broadcast', { event: 'aviso' }, ({ payload: a }) => {
+    if (a && a.parar) tirarAviso(); else mostrarAviso(a || {});
+    canal.send({ type: 'broadcast', event: 'aviso-ok', payload: { noAr: !!ltAnim } }).catch(() => {});
+  });
+  canal.on('broadcast', { event: 'aviso-pergunta' }, () => {
+    canal.send({ type: 'broadcast', event: 'aviso-ok', payload: { noAr: !!ltAnim, projetor: true } }).catch(() => {});
   }).subscribe(st => {
     if (st === 'SUBSCRIBED'){ estado('meio', 'Aguardando o iPad…'); canal.send({ type: 'broadcast', event: 'pedido', payload: {} }).catch(() => {}); }
     else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') estado('', 'Sem conexão com a internet');

@@ -778,7 +778,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.9.1';
+const VERSAO = '2.9.2';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1697,6 +1697,8 @@ function htmlProjecao(completo){
     <div class="copia"><div><small>Código do projetor</small><b class="codigo-proj">${esc(c)}</b></div><button class="btn" data-copiar="${esc(c)}">Copiar</button></div>
     <div class="copia"><div><small>Endereço já com o código (abre conectado)</small><b>${esc(comCodigo)}</b></div><button class="btn" data-copiar="${esc(comCodigo)}">Copiar</button></div>
     <p class="dica" style="margin-top:8px">No notebook, abra o endereço e digite o código — ou use direto o endereço que já leva o código.</p>
+    ${completo ? `<div class="copia" style="margin-top:10px"><div><small>Avisos no telão pelo celular (para quem cuida do data-show)</small><b>${esc(urlProjetor().replace(/projetor\.html$/, 'aviso.html') + '?codigo=' + c)}</b></div><button class="btn" data-copiar="${esc(urlProjetor().replace(/projetor\.html$/, 'aviso.html') + '?codigo=' + c)}">Copiar</button></div>
+    <p class="dica" style="margin-top:6px">Quem está no notebook também pode pôr um aviso pela própria tela do projetor: tecla <b>A</b> ou o botão do megafone.</p>` : ''}
     <button class="btn" data-novo-codigo style="margin-top:10px;width:100%;justify-content:center">🔄 Gerar novo código</button>
     <p class="dica" style="margin-top:6px">Pregou em outra igreja? Gere um código novo: o antigo deixa de funcionar e ninguém de lá consegue mais acompanhar seus slides.</p>`;
 }

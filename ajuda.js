@@ -69,6 +69,7 @@ pt: `
 <li>No iPad, abra o sermão e toque em <b>Slides</b>. Toque numa miniatura para projetar; <b>Tela preta</b> apaga a projeção.</li>
 </ol>
 <p>A bolinha verde mostra que o projetor está conectado. Se a internet cair, o último slide continua na tela.</p>
+<p><b>Avisos no telão</b> (frase correndo no alto ou no rodapé): quem está no notebook aperta a tecla <b>A</b> (ou o botão do megafone, que aparece ao mexer o mouse), escreve e toca em <b>Mostrar aviso</b>. Se o notebook estiver espelhado no telão, é melhor usar o celular: em Minha conta › Projeção, copie o link <b>Avisos no telão pelo celular</b> e mande para a pessoa. Dá para escolher velocidade, quantas vezes repete, posição e tamanho da letra.</p>
 </details>
 
 <details><summary>4b. Slides automáticos (pelas marcações)</summary>
@@ -196,6 +197,7 @@ en: `
 <li>On the iPad, open the sermon and tap <b>Slides</b>. Tap a thumbnail to project it; <b>Black screen</b> blanks the projector.</li>
 </ol>
 <p>The green dot means the projector is connected. If the internet drops, the last slide stays on screen.</p>
+<p><b>Notices on screen</b> (a line scrolling at the top or bottom): whoever is at the laptop presses <b>A</b> (or the megaphone button that appears when the mouse moves), types and taps <b>Show notice</b>. If the laptop is mirrored on the projector, it is better to use a phone: in My account › Projection, copy the <b>Screen notices from a phone</b> link and send it to that person. You can choose speed, how many times it repeats, position and font size.</p>
 </details>
 
 <details><summary>4b. Automatic slides (by markers)</summary>
