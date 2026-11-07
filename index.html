@@ -128,6 +128,14 @@ label.rot{display:block;font-size:13px;color:var(--txt2);margin-bottom:6px;font-
 
 #leitura{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px calc(40px + env(safe-area-inset-right)) 0 calc(40px + env(safe-area-inset-left));-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #conteudo{max-width:1000px;margin:0 auto;font-size:var(--fs,28px);line-height:var(--lh,1.5);text-align:var(--al,left)}
+/* rolagem só na vertical: o texto não "rebola" para os lados quando o dedo não desce reto */
+#leitura{overflow-x:hidden;overscroll-behavior-x:none;touch-action:pan-y}
+#conteudo{overflow-wrap:anywhere;word-break:normal}
+#conteudo img,#conteudo video,#conteudo svg,#conteudo iframe{max-width:100%;height:auto}
+#conteudo table{display:block;max-width:100%;overflow-x:auto;touch-action:pan-x pan-y}
+#conteudo td,#conteudo th{overflow-wrap:break-word}
+#conteudo p.divisoria{white-space:nowrap;overflow:hidden;text-overflow:clip}
+#conteudo pre{white-space:pre-wrap}
 #conteudo.serif{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:calc(var(--fs,28px) * 1.12)}
 #conteudo h1{font-family:Cinzel,serif;color:var(--ouro2);font-size:1.6em;line-height:1.2;margin:.5em 0 .35em;letter-spacing:.02em;text-align:left}
 #conteudo h2{font-family:Cinzel,serif;color:var(--ouro);font-size:1.22em;line-height:1.25;margin:1.3em 0 .45em;text-align:left;scroll-margin-top:12px}
@@ -788,7 +796,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.9.3';
+const VERSAO = '2.9.4';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2431,7 +2439,7 @@ async function abrirPulpito(id){
   if (!pAtual) return;
   $('#p-titulo').textContent = pAtual.titulo;
   $('#conteudo').innerHTML = pAtual.conteudo_html || '<p>(sermão vazio)</p>';
-  ligarReferencias();
+  ligarReferencias(); marcarDivisorias();
   aplicarCfg();   // também desenha as notas
   // tópicos: usa os títulos de nível 2; se não houver, nível 1; senão nível 3
   const c = $('#conteudo');
@@ -2729,11 +2737,15 @@ $('#conteudo').addEventListener('input', () => {
   clearTimeout(_salvarTexto);
   _salvarTexto = setTimeout(() => { if (corrigindo) salvarRealces(); }, 2500);   // guarda enquanto você digita
 });
+// linhas feitas só de "____" ou "-----" (divisórias do Word): um traço só, cortado na largura da tela
+function marcarDivisorias(){
+  $$('#conteudo p').forEach(p => { if (/^[\s_\-–—=·.*]{8,}$/.test(p.textContent) && !p.querySelector('img, .slide-mk')) p.classList.add('divisoria'); });
+}
 // redesenha o sermão a partir do que foi salvo (refaz tópicos, referências e notas), sem sair do lugar
 function redesenharSermao(){
   const L = $('#leitura'), topo = L.scrollTop;
   $('#conteudo').innerHTML = pAtual.conteudo_html || '';
-  ligarReferencias(); renderNotas(); pintarMarcas();
+  ligarReferencias(); marcarDivisorias(); renderNotas(); pintarMarcas();
   const c = $('#conteudo');
   topicos = [...c.querySelectorAll('h2')];
   if (!topicos.length) topicos = [...c.querySelectorAll('h1')];
