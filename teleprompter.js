@@ -129,6 +129,7 @@
       if (typeof ajustarFolga === 'function') ajustarFolga();
     }
     pintarBotao();
+    if (typeof medirFixo === 'function') requestAnimationFrame(medirFixo);   // slides fixos ao lado: o topo muda no teleprompter
   }
 
   /* ---------- entrar e sair ---------- */
@@ -153,6 +154,7 @@
     telaCheia(false); desligarMic();
     if (typeof rearmarAuto === 'function') rearmarAuto();
     pintarBotao();
+    if (typeof medirFixo === 'function') requestAnimationFrame(medirFixo);
   }
   bt.addEventListener('click', () => TP.ativo ? sair() : entrar());
   $('#p-voltar').addEventListener('click', sair, true);

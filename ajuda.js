@@ -70,6 +70,7 @@ pt: `
 </ol>
 <p>A bolinha verde mostra que o projetor está conectado. Se a internet cair, o último slide continua na tela.</p>
 <p><b>Avisos no telão</b> (frase correndo no alto ou no rodapé): quem está no notebook aperta a tecla <b>A</b> (ou o botão do megafone, que aparece ao mexer o mouse), escreve e toca em <b>Mostrar aviso</b>. Se o notebook estiver espelhado no telão, é melhor usar o celular: em Minha conta › Projeção, copie o link <b>Avisos no telão pelo celular</b> e mande para a pessoa. Dá para escolher velocidade, quantas vezes repete, posição e tamanho da letra.</p>
+<p><b>Slides fixos ao lado</b> (iPad grande ou notebook): no painel dos slides, toque no botão de coluna (ao lado de “Tela preta”). O texto do sermão vai para a esquerda e os slides ficam sempre abertos à direita. Toque de novo, ou no botão Slides, para soltar. A escolha fica guardada no aparelho; em telas estreitas (iPad em pé, celular) o botão não aparece.</p>
 </details>
 
 <details><summary>4b. Slides automáticos (pelas marcações)</summary>
@@ -198,6 +199,7 @@ en: `
 </ol>
 <p>The green dot means the projector is connected. If the internet drops, the last slide stays on screen.</p>
 <p><b>Notices on screen</b> (a line scrolling at the top or bottom): whoever is at the laptop presses <b>A</b> (or the megaphone button that appears when the mouse moves), types and taps <b>Show notice</b>. If the laptop is mirrored on the projector, it is better to use a phone: in My account › Projection, copy the <b>Screen notices from a phone</b> link and send it to that person. You can choose speed, how many times it repeats, position and font size.</p>
+<p><b>Slides pinned beside the text</b> (large iPad or laptop): in the slides panel, tap the column button (next to “Black screen”). The sermon text moves to the left and the slides stay open on the right. Tap it again, or the Slides button, to unpin. The choice is saved on the device; on narrow screens (iPad in portrait, phone) the button does not appear.</p>
 </details>
 
 <details><summary>4b. Automatic slides (by markers)</summary>
