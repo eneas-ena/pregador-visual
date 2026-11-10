@@ -514,7 +514,7 @@ li > .nota-linha{margin:.3em 0}
 .cn-relogio.parado b{opacity:.75}
 .cn-num{min-width:62px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
 .cn-palco{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
-.cn-folha{position:relative;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.cn-folha{position:relative;overflow:hidden;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.45)}
 .cn-folha img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
 .cn-bt.confirmar{background:#E5484D;color:#fff;border-color:#E5484D;font-size:13px}
 .cn-folha.quadro{background:#F8F3E6}.cn-folha.quadro img{display:none}
@@ -830,7 +830,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.12.1';
+const VERSAO = '2.13.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2720,7 +2720,7 @@ function abrirSlides(on){
 }
 $('#sl-pill').addEventListener('click', e => { e.stopPropagation(); $('#menu-topicos').classList.add('oculto'); abrirSlides(); });
 function projetar(n, peloAuto){
-  projEstado.atual = n; projEstado.preta = false; projEstado.quadro = null; projEstado.t = Date.now();
+  projEstado.atual = n; projEstado.preta = false; projEstado.quadro = null; projEstado.vista = null; projEstado.t = Date.now();
   enviarEstado(); pintarSlides();
   if (!peloAuto) rearmarAuto();
 }
@@ -3461,12 +3461,19 @@ iniciar();
     ant: ic('<path d="M15 18l-6-6 6-6"/>'),
     seg: ic('<path d="M9 18l6-6-6-6"/>'),
     mais: ic('<path d="M12 5v14M5 12h14"/>'),
-    menos: ic('<path d="M5 12h14"/>')
+    menos: ic('<path d="M5 12h14"/>'),
+    zmais: ic('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/>'),
+    zmenos: ic('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/>'),
+    mover: ic('<path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/>'),
+    inteira: ic('<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>')
   };
 
   let cx = null, aberto = false, n = 1, tracos = [], desf = [], refz = [];
   let modo = 'slide', pg = 1;                       // v2.12: 'slide' ou 'quadro' (páginas q1, q2…)
   const ch = () => modo === 'quadro' ? 'q' + pg : n;   // onde a tinta fica guardada
+  // v2.13: zoom. z = ampliação; L,T = canto de cima/esquerda da parte visível (0 a 1 do slide)
+  let V = { z: 1, L: 0, T: 0 }, arrasto = null;
+  const ZS = [1, 1.5, 2, 3, 4];
   let pendente = false, tSalvar = null, visto = null, fotos = {}, urls = [];
   let atual = null, ativo = null, antesBorracha = null, apagou = false, lpts = [], laserLigado = false;
   let toque = null, ultimaCaneta = 0;
@@ -3503,6 +3510,13 @@ iniciar();
         </div>
         <span class="cn-sep"></span>
         <div class="cn-grupo">
+          <button class="cn-bt" data-acao="zmenos" title="Diminuir o zoom">${I.zmenos}</button>
+          <button class="cn-bt" data-acao="zmais" title="Aumentar o zoom">${I.zmais}</button>
+          <button class="cn-bt" data-ferr="mao" title="Mover a parte ampliada">${I.mover}</button>
+          <button class="cn-bt" data-acao="zfit" title="Voltar à tela inteira">${I.inteira}</button>
+        </div>
+        <span class="cn-sep"></span>
+        <div class="cn-grupo">
           <button class="cn-bt" data-acao="desfazer" title="Desfazer">${I.desfazer}</button>
           <button class="cn-bt" data-acao="refazer" title="Refazer">${I.refazer}</button>
           <button class="cn-bt" data-acao="limpar" title="Limpar este slide">${I.limpar}</button>
@@ -3530,7 +3544,7 @@ iniciar();
     d.querySelector('.cn-barra').addEventListener('click', e => {
       const f = e.target.closest('[data-ferr]'), c = e.target.closest('[data-cor]'), g = e.target.closest('[data-gr]'), a = e.target.closest('[data-acao]');
       if (f){ est.ferr = f.dataset.ferr; guardarEst(); pintar(); return; }
-      if (c){ est.cor = c.dataset.cor; if (est.ferr === 'borracha' || est.ferr === 'laser') est.ferr = 'caneta'; guardarEst(); pintar(); return; }
+      if (c){ est.cor = c.dataset.cor; if (['borracha', 'laser', 'mao'].includes(est.ferr)) est.ferr = 'caneta'; guardarEst(); pintar(); return; }
       if (g){ est.gr = g.dataset.gr; guardarEst(); pintar(); return; }
       if (e.target.closest('[data-r="cron"]')){ alternarCron(); return; }
       const md = e.target.closest('[data-modo]'); if (md){ trocarModo(md.dataset.modo); return; }
@@ -3545,6 +3559,9 @@ iniciar();
       else if (acao === 'seg') navegar(1);
       else if (acao === 'nova') novaPagina();
       else if (acao === 'apagar-pg') apagarPagina(a);
+      else if (acao === 'zmais') zoomPasso(1);
+      else if (acao === 'zmenos') zoomPasso(-1);
+      else if (acao === 'zfit') setVista(1, 0, 0);
     });
     cx.fora.addEventListener('click', projetarAtual);
     cx.img.addEventListener('load', medir);
@@ -3576,8 +3593,8 @@ iniciar();
   function desenhar(ctx, s){
     const p = s.p, k = p.length / 3; if (!k) return;
     const W = ctx.canvas.width, H = ctx.canvas.height;
-    const X = i => p[i * 3] * W, Y = i => p[i * 3 + 1] * H, P = i => p[i * 3 + 2];
-    const base = s.w * W;
+    const X = i => (p[i * 3] - V.L) * V.z * W, Y = i => (p[i * 3 + 1] - V.T) * V.z * H, P = i => p[i * 3 + 2];
+    const base = s.w * W * V.z;
     ctx.save();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
     if (s.t === 'h'){
@@ -3600,8 +3617,14 @@ iniciar();
     }
     ctx.restore();
   }
+  function aplicarImg(){
+    const w = cx.folha.clientWidth, h = cx.folha.clientHeight;
+    cx.img.style.transformOrigin = '0 0';
+    cx.img.style.transform = V.z > 1 ? `scale(${V.z}) translate(${-V.L * w}px, ${-V.T * h}px)` : '';
+  }
   function redesenhar(){
     if (!cx) return;
+    aplicarImg();
     const b = cx.base.getContext('2d'); b.clearRect(0, 0, cx.base.width, cx.base.height);
     tracos.forEach(s => desenhar(b, s));
     cx.vivo.getContext('2d').clearRect(0, 0, cx.vivo.width, cx.vivo.height);
@@ -3614,12 +3637,22 @@ iniciar();
   /* ---------- ponteiro: caneta escreve, dedo passa slide ---------- */
   function ponto(e){
     const r = cx.folha.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, dentro: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
+    return { x: V.L + (e.clientX - r.left) / r.width / V.z, y: V.T + (e.clientY - r.top) / r.height / V.z, dentro: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
   }
   const pressao = e => e.pointerType === 'pen' ? (e.pressure > 0 ? e.pressure : .5) : .5;
   const escreve = e => e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && est.dedo);
   function baixou(e){
     if (e.pointerType === 'pen') ultimaCaneta = performance.now();
+    // mover a parte ampliada: com a ferramenta "mover", ou com o dedo (quando o dedo não escreve) se houver zoom
+    const dedoLivre = e.pointerType === 'touch' && !est.dedo;
+    if ((est.ferr === 'mao' && !dedoLivre) || (dedoLivre && V.z > 1)){
+      if (ativo !== null || !e.isPrimary || e.button > 0) return;
+      e.preventDefault();
+      try { cx.palco.setPointerCapture(e.pointerId); } catch {}
+      const r = cx.folha.getBoundingClientRect();
+      ativo = e.pointerId; arrasto = { x: e.clientX, y: e.clientY, L: V.L, T: V.T, w: r.width, h: r.height };
+      return;
+    }
     if (!escreve(e)){
       if (e.pointerType === 'touch' && e.isPrimary) toque = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, largo: (e.width || 0) > 50 };
       return;
@@ -3640,6 +3673,7 @@ iniciar();
     if (e.pointerType === 'pen') ultimaCaneta = performance.now();
     if (e.pointerId !== ativo) return;
     e.preventDefault();
+    if (arrasto){ setVista(V.z, arrasto.L - (e.clientX - arrasto.x) / (arrasto.w * V.z), arrasto.T - (e.clientY - arrasto.y) / (arrasto.h * V.z)); return; }
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     const lista = evs.length ? evs : [e];
     if (est.ferr === 'borracha'){ lista.forEach(apagarEm); return; }
@@ -3649,6 +3683,7 @@ iniciar();
     desenharVivo();
   }
   function soltou(e){
+    if (arrasto && e.pointerId === ativo){ arrasto = null; ativo = null; return; }
     if (toque && e.pointerId === toque.id){
       const dx = e.clientX - toque.x, dy = e.clientY - toque.y, dt = performance.now() - toque.t;
       const semCaneta = performance.now() - ultimaCaneta > 1200;
@@ -3679,10 +3714,10 @@ iniciar();
     const r = cx.folha.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, raio = 14;
     const W = r.width, H = r.height;
     const fica = tracos.filter(s => {
-      const p = s.p, k = p.length / 3, folga = raio + s.w * W / 2;
+      const p = s.p, k = p.length / 3, folga = raio + s.w * W * V.z / 2;
       for (let i = 0; i < k; i++){
-        const ax = p[i * 3] * W, ay = p[i * 3 + 1] * H;
-        const bx = i + 1 < k ? p[(i + 1) * 3] * W : ax, by = i + 1 < k ? p[(i + 1) * 3 + 1] * H : ay;
+        const ax = (p[i * 3] - V.L) * V.z * W, ay = (p[i * 3 + 1] - V.T) * V.z * H;
+        const bx = i + 1 < k ? (p[(i + 1) * 3] - V.L) * V.z * W : ax, by = i + 1 < k ? (p[(i + 1) * 3 + 1] - V.T) * V.z * H : ay;
         if (distSeg(px, py, ax, ay, bx, by) <= folga) return false;
       }
       return true;
@@ -3702,10 +3737,10 @@ iniciar();
       for (let i = 1; i < lpts.length; i++){
         const a = lpts[i - 1], b = lpts[i];
         v.globalAlpha = Math.max(0, 1 - (agora_ - b.t) / VIDA); v.lineWidth = 6 * dpr;
-        v.beginPath(); v.moveTo(a.x * W, a.y * H); v.lineTo(b.x * W, b.y * H); v.stroke();
+        v.beginPath(); v.moveTo((a.x - V.L) * V.z * W, (a.y - V.T) * V.z * H); v.lineTo((b.x - V.L) * V.z * W, (b.y - V.T) * V.z * H); v.stroke();
       }
       const u = lpts[lpts.length - 1];
-      v.globalAlpha = 1; v.fillStyle = '#FF2D2D'; v.beginPath(); v.arc(u.x * W, u.y * H, 7 * dpr, 0, 7); v.fill();
+      v.globalAlpha = 1; v.fillStyle = '#FF2D2D'; v.beginPath(); v.arc((u.x - V.L) * V.z * W, (u.y - V.T) * V.z * H, 7 * dpr, 0, 7); v.fill();
       v.restore();
     }
     if (lpts.length || laserLigado) requestAnimationFrame(animarLaser);
@@ -3732,6 +3767,7 @@ iniciar();
   /* ---------- slides ---------- */
   function carregarSlide(){
     tracos = (((pAtual && pAtual.tinta) || {})[ch()] || []).slice(); desf = []; refz = []; atual = null;
+    V = { z: 1, L: 0, T: 0 }; arrasto = null;                // slide ou página nova começa sem zoom
     cx.folha.classList.toggle('quadro', modo === 'quadro');
     if (modo === 'quadro'){ cx.img.removeAttribute('src'); medir(); redesenhar(); return; }
     const src = fotos[n] || (slidesP[n - 1] && slidesP[n - 1].url) || '';
@@ -3802,16 +3838,43 @@ iniciar();
     else { n = Math.min(Math.max(projEstado.atual || n, 1), slidesP.length); visto = projEstado.atual; }
     carregarSlide(); pintar(); requestAnimationFrame(medir);
   }
+  function setVista(z, L, T){
+    z = Math.max(1, Math.min(4, z));
+    const m = 1 - 1 / z;
+    V = { z, L: Math.max(0, Math.min(m, L)), T: Math.max(0, Math.min(m, T)) };
+    redesenhar(); sincVista(); pintar();
+  }
+  function zoomPasso(d){
+    const i = ZS.findIndex(x => x >= V.z - 1e-6);
+    const z = ZS[Math.max(0, Math.min(ZS.length - 1, (i < 0 ? 0 : i) + d))];
+    const cxv = V.L + 1 / (2 * V.z), cyv = V.T + 1 / (2 * V.z);       // amplia mantendo o centro
+    setVista(z, cxv - 1 / (2 * z), cyv - 1 / (2 * z));
+    if (z > 1 && !est.dedo && est.ferr !== 'mao') aviso('Arraste com o dedo para mudar a parte ampliada', 2500);
+    else if (z > 1 && est.dedo && est.ferr !== 'mao') aviso('Para mudar a parte ampliada, use a ferramenta de mover', 3000);
+  }
+  // o telão acompanha o zoom (no máximo uns 11 envios por segundo)
+  let tZoom = null, ultZoom = 0;
+  function sincVista(){
+    if (!pAtual || !noAr()) return;
+    projEstado.vista = V.z > 1 ? { k: String(ch()), z: V.z, x: V.L, y: V.T } : null;
+    if (tZoom) return;
+    tZoom = setTimeout(() => {
+      tZoom = null; ultZoom = performance.now();
+      if (!pAtual || !canal || !canalOk || !noAr()) return;
+      canal.send({ type: 'broadcast', event: 'zoom', payload: { sermao_id: pAtual.id, n: ch(), z: V.z, x: V.L, y: V.T } }).catch(() => {});
+    }, Math.max(0, 90 - (performance.now() - ultZoom)));
+  }
   function projetarQuadro(p){
     if (!pAtual) return;
     if (projEstado.sermao_id !== pAtual.id) projEstado = { sermao_id: pAtual.id, titulo: pAtual.titulo, slides: slidesP.map(x => x.url), atual: null, preta: false, t: 0 };
     conectarProjetor(); iniciarBatida();
     projEstado.quadro = p; projEstado.preta = false; projEstado.t = Date.now();
+    projEstado.vista = null; sincVista();
     enviarEstado(); pintarSlides(); enviarTinta('q' + p);
   }
   function projetarAtual(){
     if (modo === 'quadro') projetarQuadro(pg);
-    else { projetar(n); visto = projEstado.atual; enviarTinta(n); }
+    else { projetar(n); visto = projEstado.atual; enviarTinta(n); sincVista(); }
     pintar();
   }
 
@@ -3851,6 +3914,9 @@ iniciar();
     cx.raiz.querySelector('[data-acao="ant"]').disabled = q ? pg <= 1 : n <= 1;
     cx.raiz.querySelector('[data-acao="seg"]').disabled = q ? pg >= totalPaginas() : n >= slidesP.length;
     cx.raiz.querySelector('[data-acao="nova"]').classList.toggle('oculto', !q);
+    cx.raiz.querySelector('[data-acao="zmenos"]').disabled = V.z <= 1;
+    cx.raiz.querySelector('[data-acao="zmais"]').disabled = V.z >= 4;
+    cx.raiz.querySelector('[data-acao="zfit"]').classList.toggle('oculto', V.z <= 1);
     const bApg = cx.raiz.querySelector('[data-acao="apagar-pg"]');
     bApg.classList.toggle('oculto', !q); if (!tArmado) bApg.disabled = totalPaginas() <= 1;
     cx.num.textContent = q ? `${pg} / ${totalPaginas()}` : `${n} / ${slidesP.length}`;

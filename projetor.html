@@ -129,7 +129,7 @@ body.com-aviso #aviso-on{display:inline}
 </div>
 
 <script>
-const VERSAO = '2.12.0';
+const VERSAO = '2.13.0';
 const { SB_URL, SB_KEY } = window.PV_CONFIG;
 const $ = s => document.querySelector(s);
 document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
@@ -321,6 +321,11 @@ function conectar(codigo){
     tCache[k] = p.tracos || []; tVer[k] = p.tv;
     if (k === tKey) pintarTinta();
   });
+  canal.on('broadcast', { event: 'zoom' }, ({ payload: p }) => {
+    if (!p || chaveT(p.sermao_id, p.n) !== tKey) return;
+    tVista = { z: +p.z || 1, x: +p.x || 0, y: +p.y || 0 };
+    aplicarVista();
+  });
   canal.on('broadcast', { event: 'laser' }, ({ payload: p }) => {
     if (!p || chaveT(p.sermao_id, p.n) !== tKey || !Array.isArray(p.q)) return;
     const agora = performance.now();
@@ -353,10 +358,14 @@ function conectar(codigo){
 // O iPad avisa a "versão" das marcações do slide no ar; quando ela muda, este projetor pede os traços.
 const cvT = $('#tinta');
 let tKey = null, tCache = {}, tVer = {}, tPedido = {}, tLaser = [], tAnimando = false, tQuadro = false;
+let tVista = { z: 1, x: 0, y: 0 };      // v2.13: zoom vindo do iPad
 const chaveT = (s, n) => s + '|' + n;
 function atualizarTinta(e, url, quadro){
   const k = quadro && e.sermao_id ? chaveT(e.sermao_id, 'q' + quadro) : (url && e.sermao_id && e.atual ? chaveT(e.sermao_id, e.atual) : null);
-  if (k !== tKey || !!quadro !== tQuadro){ tKey = k; tQuadro = !!quadro; tLaser = []; pintarTinta(); }
+  if (k !== tKey || !!quadro !== tQuadro){ tKey = k; tQuadro = !!quadro; tLaser = []; }
+  const v = e.vista;
+  tVista = (v && k && chaveT(e.sermao_id, v.k) === k) ? { z: +v.z || 1, x: +v.x || 0, y: +v.y || 0 } : { z: 1, x: 0, y: 0 };
+  aplicarVista();
   if (!k || e.tv === undefined || tVer[k] === e.tv) return;
   const pk = k + '|' + e.tv;
   if (tPedido[pk] && Date.now() - tPedido[pk] < 4000) return;
@@ -375,10 +384,24 @@ function retQuadro(dpr){
   const W = innerWidth, H = innerHeight, e = Math.min(W / 16, H / 9), w = 16 * e, h = 9 * e;
   return { x: (W - w) / 2 * dpr, y: (H - h) / 2 * dpr, w: w * dpr, h: h * dpr };
 }
+// amplia a imagem do slide do mesmo jeito que no iPad
+function aplicarVista(){
+  const Z = tVista;
+  ['#camA', '#camB'].forEach(sel => {
+    const img = $(sel);
+    if (Z.z <= 1 || tQuadro){ img.style.transform = ''; return; }
+    const nw = img.naturalWidth || 16, nh = img.naturalHeight || 9, W = innerWidth, H = innerHeight;
+    const e = Math.min(W / nw, H / nh), w = nw * e, h = nh * e, x = (W - w) / 2, y = (H - h) / 2;
+    img.style.transformOrigin = `${x}px ${y}px`;
+    img.style.transform = `translate(${-Z.x * Z.z * w}px, ${-Z.y * Z.z * h}px) scale(${Z.z})`;
+  });
+  pintarTinta();
+}
 function tracoT(ctx, s, r){
   const q = s.q || [], k = q.length / 3; if (!k) return;
-  const X = i => r.x + q[i * 3] / 10000 * r.w, Y = i => r.y + q[i * 3 + 1] / 10000 * r.h, P = i => q[i * 3 + 2] / 100;
-  const larg = pr => .45 + .9 * pr, base = s.w * r.w;
+  const Z = tVista;
+  const X = i => r.x + (q[i * 3] / 10000 - Z.x) * Z.z * r.w, Y = i => r.y + (q[i * 3 + 1] / 10000 - Z.y) * Z.z * r.h, P = i => q[i * 3 + 2] / 100;
+  const larg = pr => .45 + .9 * pr, base = s.w * r.w * Z.z;
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
   const meio = i => [i < k - 1 ? (X(i) + X(i + 1)) / 2 : X(i), i < k - 1 ? (Y(i) + Y(i + 1)) / 2 : Y(i)];
   if (s.t === 'h'){
@@ -413,10 +436,10 @@ function pintarTinta(){
     for (let i = 1; i < tLaser.length; i++){
       const a = tLaser[i - 1], b = tLaser[i];
       ctx.globalAlpha = Math.max(0, 1 - (agora - b.t) / VIDA);
-      ctx.beginPath(); ctx.moveTo(r.x + a.x * r.w, r.y + a.y * r.h); ctx.lineTo(r.x + b.x * r.w, r.y + b.y * r.h); ctx.stroke();
+      const Z = tVista; ctx.beginPath(); ctx.moveTo(r.x + (a.x - Z.x) * Z.z * r.w, r.y + (a.y - Z.y) * Z.z * r.h); ctx.lineTo(r.x + (b.x - Z.x) * Z.z * r.w, r.y + (b.y - Z.y) * Z.z * r.h); ctx.stroke();
     }
     const u = tLaser[tLaser.length - 1]; ctx.globalAlpha = 1; ctx.fillStyle = '#FF2D2D';
-    ctx.beginPath(); ctx.arc(r.x + u.x * r.w, r.y + u.y * r.h, 10 * dpr, 0, 7); ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(r.x + (u.x - tVista.x) * tVista.z * r.w, r.y + (u.y - tVista.y) * tVista.z * r.h, 10 * dpr, 0, 7); ctx.fill(); ctx.restore();
   }
 }
 function animarLaser(){
@@ -424,8 +447,8 @@ function animarLaser(){
   const passo = () => { pintarTinta(); if (tLaser.length) requestAnimationFrame(passo); else tAnimando = false; };
   requestAnimationFrame(passo);
 }
-['#camA', '#camB'].forEach(s => $(s).addEventListener('load', () => setTimeout(pintarTinta, 0)));
-addEventListener('resize', pintarTinta);
+['#camA', '#camB'].forEach(s => $(s).addEventListener('load', () => setTimeout(aplicarVista, 0)));
+addEventListener('resize', aplicarVista);
 
 /* ===== ATUALIZAÇÃO DO PROJETOR ===== */
 async function versaoPublicada(){
