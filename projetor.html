@@ -69,6 +69,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 #painel-aviso .dica b{color:#C9A227;word-break:break-all}
 #aviso-on{display:none;color:#3DDC84;font-weight:700;font-size:13px}
 /* v2.11: marcações da caneta por cima do slide */
+#quadro{position:fixed;inset:0;background:#F8F3E6;opacity:0;transition:opacity .35s ease}
+#quadro.on{opacity:1}
 #tinta{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 #espera{z-index:3}
 #cantos{z-index:25}
@@ -80,6 +82,7 @@ body.com-aviso #aviso-on{display:inline}
 <body>
 <img class="camada" id="camA" alt="">
 <img class="camada" id="camB" alt="">
+<div id="quadro"></div>
 <canvas id="tinta"></canvas>
 
 <div id="espera">
@@ -126,7 +129,7 @@ body.com-aviso #aviso-on{display:inline}
 </div>
 
 <script>
-const VERSAO = '2.11.0';
+const VERSAO = '2.12.0';
 const { SB_URL, SB_KEY } = window.PV_CONFIG;
 const $ = s => document.querySelector(s);
 document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
@@ -305,9 +308,11 @@ function conectar(codigo){
     // vários aparelhos podem estar abertos: só vale o último toque de verdade
     if ((e.t || 0) < ultimoToque) return;
     ultimoToque = e.t || 0;
-    const url = (!e.preta && e.atual && e.slides) ? e.slides[e.atual - 1] : null;
+    const quadro = !e.preta && e.quadro ? e.quadro : null;        // v2.12: quadro em marfim no lugar do slide
+    const url = (!quadro && !e.preta && e.atual && e.slides) ? e.slides[e.atual - 1] : null;
     mostrar(url);
-    atualizarTinta(e, url);
+    $('#quadro').classList.toggle('on', !!quadro);
+    atualizarTinta(e, url, quadro);
   });
   // v2.11: traços da caneta e laser vindos do iPad
   canal.on('broadcast', { event: 'tinta' }, ({ payload: p }) => {
@@ -347,22 +352,27 @@ function conectar(codigo){
 /* ===== v2.11: MARCAÇÕES DA CANETA DO iPad POR CIMA DO SLIDE ===== */
 // O iPad avisa a "versão" das marcações do slide no ar; quando ela muda, este projetor pede os traços.
 const cvT = $('#tinta');
-let tKey = null, tCache = {}, tVer = {}, tPedido = {}, tLaser = [], tAnimando = false;
+let tKey = null, tCache = {}, tVer = {}, tPedido = {}, tLaser = [], tAnimando = false, tQuadro = false;
 const chaveT = (s, n) => s + '|' + n;
-function atualizarTinta(e, url){
-  const k = url && e.sermao_id && e.atual ? chaveT(e.sermao_id, e.atual) : null;
-  if (k !== tKey){ tKey = k; tLaser = []; pintarTinta(); }
+function atualizarTinta(e, url, quadro){
+  const k = quadro && e.sermao_id ? chaveT(e.sermao_id, 'q' + quadro) : (url && e.sermao_id && e.atual ? chaveT(e.sermao_id, e.atual) : null);
+  if (k !== tKey || !!quadro !== tQuadro){ tKey = k; tQuadro = !!quadro; tLaser = []; pintarTinta(); }
   if (!k || e.tv === undefined || tVer[k] === e.tv) return;
   const pk = k + '|' + e.tv;
   if (tPedido[pk] && Date.now() - tPedido[pk] < 4000) return;
   tPedido[pk] = Date.now();
-  canal.send({ type: 'broadcast', event: 'pedido-tinta', payload: { sermao_id: e.sermao_id, n: e.atual } }).catch(() => {});
+  canal.send({ type: 'broadcast', event: 'pedido-tinta', payload: { sermao_id: e.sermao_id, n: quadro ? 'q' + quadro : e.atual } }).catch(() => {});
 }
 // onde o slide está na tela (ele fica centralizado, com faixas nas bordas)
 function retSlide(dpr){
   const img = $('#' + visivel), W = innerWidth, H = innerHeight;
   const nw = img.naturalWidth || 16, nh = img.naturalHeight || 9, e = Math.min(W / nw, H / nh);
   const w = nw * e, h = nh * e;
+  return { x: (W - w) / 2 * dpr, y: (H - h) / 2 * dpr, w: w * dpr, h: h * dpr };
+}
+// o quadro tem sempre o formato 16:9, centralizado (igual ao do iPad)
+function retQuadro(dpr){
+  const W = innerWidth, H = innerHeight, e = Math.min(W / 16, H / 9), w = 16 * e, h = 9 * e;
   return { x: (W - w) / 2 * dpr, y: (H - h) / 2 * dpr, w: w * dpr, h: h * dpr };
 }
 function tracoT(ctx, s, r){
@@ -391,8 +401,9 @@ function pintarTinta(){
   if (cvT.width !== W || cvT.height !== H){ cvT.width = W; cvT.height = H; }
   const ctx = cvT.getContext('2d'); ctx.clearRect(0, 0, W, H);
   const img = $('#' + visivel);
-  if (!tKey || !urlAtual || img.src !== urlAtual || !img.complete) return;     // espera o slide novo aparecer
-  const r = retSlide(dpr);
+  if (!tKey) return;
+  if (!tQuadro && (!urlAtual || img.src !== urlAtual || !img.complete)) return;     // espera o slide novo aparecer
+  const r = tQuadro ? retQuadro(dpr) : retSlide(dpr);
   (tCache[tKey] || []).forEach(s => tracoT(ctx, s, r));
   // laser: rastro vermelho que some sozinho
   const agora = performance.now(), VIDA = 700;
