@@ -498,6 +498,7 @@ li > .nota-linha{margin:.3em 0}
 .cn-grupo{display:flex;align-items:center;gap:6px}
 .cn-sep{width:1px;height:28px;background:var(--linha)}
 .cn-espaco{flex:1}
+.cn-quebra{flex-basis:100%;height:0}   /* v2.13.1: zoom, desfazer e páginas sempre na 2ª linha */
 .cn-bt{min-width:40px;height:40px;padding:0 9px;border-radius:10px;border:1px solid var(--linha);background:var(--card);display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px}
 .cn-bt svg{width:19px;height:19px}
 .cn-bt i{display:block;border-radius:50%;background:currentColor}
@@ -830,7 +831,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.13.0';
+const VERSAO = '2.13.1';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -3508,7 +3509,7 @@ iniciar();
           <button class="cn-bt" data-gr="medio" title="Médio"><i style="width:7px;height:7px"></i></button>
           <button class="cn-bt" data-gr="grosso" title="Grosso"><i style="width:11px;height:11px"></i></button>
         </div>
-        <span class="cn-sep"></span>
+        <span class="cn-quebra"></span>
         <div class="cn-grupo">
           <button class="cn-bt" data-acao="zmenos" title="Diminuir o zoom">${I.zmenos}</button>
           <button class="cn-bt" data-acao="zmais" title="Aumentar o zoom">${I.zmais}</button>
@@ -3916,7 +3917,7 @@ iniciar();
     cx.raiz.querySelector('[data-acao="nova"]').classList.toggle('oculto', !q);
     cx.raiz.querySelector('[data-acao="zmenos"]').disabled = V.z <= 1;
     cx.raiz.querySelector('[data-acao="zmais"]').disabled = V.z >= 4;
-    cx.raiz.querySelector('[data-acao="zfit"]').classList.toggle('oculto', V.z <= 1);
+    cx.raiz.querySelector('[data-acao="zfit"]').disabled = V.z <= 1;   // fica sempre no lugar
     const bApg = cx.raiz.querySelector('[data-acao="apagar-pg"]');
     bApg.classList.toggle('oculto', !q); if (!tArmado) bApg.disabled = totalPaginas() <= 1;
     cx.num.textContent = q ? `${pg} / ${totalPaginas()}` : `${n} / ${slidesP.length}`;
