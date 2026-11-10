@@ -490,6 +490,35 @@ li > .nota-linha{margin:.3em 0}
 .menu-opcoes .btn span{font-weight:400;font-size:13.5px;color:var(--txt2);line-height:1.4}
 .menu-opcoes .btn.prim span{color:#0F1B33}
 .sl-codigo b{color:var(--ouro);letter-spacing:.14em}
+/* ===================== v2.10: SLIDE EM TELA CHEIA COM CANETA ===================== */
+#sl-caneta svg{width:19px;height:19px}
+.cn{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;background:#0B1324;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+:root[data-theme="light"] .cn{background:#DAD4C6}
+.cn-barra{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left));background:var(--bg);border-bottom:1px solid var(--linha);color:var(--txt)}
+.cn-grupo{display:flex;align-items:center;gap:6px}
+.cn-sep{width:1px;height:28px;background:var(--linha)}
+.cn-espaco{flex:1}
+.cn-bt{min-width:40px;height:40px;padding:0 9px;border-radius:10px;border:1px solid var(--linha);background:var(--card);display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px}
+.cn-bt svg{width:19px;height:19px}
+.cn-bt i{display:block;border-radius:50%;background:currentColor}
+.cn-bt.on{background:var(--ouro);color:#0F1B33;border-color:var(--ouro)}
+.cn-bt:disabled{opacity:.35}
+.cn-cor{width:30px;height:30px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 2px var(--bg),0 0 0 1px var(--linha)}
+.cn-cor.on{border-color:var(--txt)}
+.cn-relogio{display:inline-flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums;font-weight:700;font-size:20px;padding:5px 11px;border-radius:10px;border:1.5px solid var(--linha);background:var(--card);color:var(--txt)}
+.cn-relogio small{font-size:10px;letter-spacing:.1em;color:var(--txt2)}
+.cn-relogio.azul{border-color:var(--t-azul)}.cn-relogio.azul b{color:var(--t-azul)}
+.cn-relogio.amarelo{border-color:var(--t-amarelo)}.cn-relogio.amarelo b{color:var(--t-amarelo)}
+.cn-relogio.laranja{border-color:var(--t-laranja)}.cn-relogio.laranja b{color:var(--t-laranja)}
+.cn-relogio.vermelho{border-color:var(--t-vermelho)}.cn-relogio.vermelho b{color:var(--t-vermelho)}
+.cn-relogio.parado b{opacity:.75}
+.cn-num{min-width:62px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.cn-palco{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
+.cn-folha{position:relative;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.cn-folha img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+.cn-folha canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.cn-fora{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:rgba(245,153,74,.95);color:#1B1B1B;font-weight:700;font-size:14px;box-shadow:var(--sombra);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+@media (max-width:600px){ .cn-sep{display:none} .cn-relogio{font-size:16px} .cn-bt{min-width:36px;height:36px} .cn-cor{width:26px;height:26px} }
 </style>
 </head>
 <body>
@@ -720,6 +749,7 @@ li > .nota-linha{margin:.3em 0}
         <button class="icone" id="sl-seg" title="Próximo slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
         <button class="btn" id="sl-preta">Tela preta</button>
         <button class="icone" id="sl-fixar" title="Fixar os slides ao lado do texto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M14 4v16"/><path d="M17 9h1M17 12h1M17 15h1"/></svg></button>
+        <button class="icone oculto" id="sl-caneta" title="Slide em tela cheia com caneta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
       </div>
       <div class="seg sl-modo" id="sl-modo"><button data-m="manual">Manual</button><button data-m="auto">Automático pelas marcações</button></div>
       <span class="sl-auto-info" id="sl-auto-info"></span>
@@ -796,7 +826,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.9.4';
+const VERSAO = '2.10.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -993,6 +1023,7 @@ async function sincronizar(){
       if (m.includes('SEM_REDE') || /Failed to fetch|Load failed|NetworkError/i.test(m)) break;
       if (m.includes('SEM_SESSAO')){ sincronizando = false; statusSinc('pend', 'Entre de novo na conta'); verificarConta(); return; }
       if (m.includes('PGRST106')){ aviso('O schema "pregador" ainda não está liberado no Supabase (Exposed schemas).', 6000); break; }
+      if (m.includes('PGRST204') && m.includes('tinta')){ aviso('Falta rodar no Supabase o SQL da caneta (coluna “tinta”). As marcações ficam guardadas neste aparelho até lá.', 8000); break; }
       if (m.includes('PGRST205') || m.includes('42P01')){ aviso('Falta rodar o schema.sql no Supabase.', 6000); break; }
       if (m.includes('42501') || m.includes('row-level')){ verificarConta(); break; }
     }
@@ -1380,7 +1411,8 @@ $('#ed-salvar').addEventListener('click', async () => {
     }
   }
   if (edSlides !== null){
-    // slides trocados ou removidos
+    // slides trocados ou removidos (as marcações à caneta eram dos slides antigos: saem junto)
+    s.tinta = {};
     const antigos = (edAtual.slides || []).map(x => x.path);
     if (antigos.length) gravarLS(K('apagarSlides'), [...lerLS(K('apagarSlides'), []), ...antigos]);
     await dbApagarSlides(s.id);
@@ -3391,6 +3423,374 @@ async function iniciar(){
 }
 window.addEventListener('online', verificarConta);
 iniciar();
+</script>
+<script>
+/* ===================== v2.10 · SLIDE EM TELA CHEIA COM CANETA =====================
+   Por enquanto só para o administrador.
+   A caneta (Apple Pencil) e o mouse escrevem; o dedo passa os slides (deslizar para os lados).
+   As marcações ficam salvas no próprio sermão (campo "tinta"): uma lista de traços por slide,
+   com posições relativas ao slide (0 a 1), para ficarem certas em qualquer tamanho de tela. */
+(() => {
+  const botao = $('#sl-caneta');
+  if (!botao || !(USUARIO && USUARIO.admin)) return;
+  botao.classList.remove('oculto');
+
+  const CORES = { vermelho: '#E5484D', azul: '#1E6FE0', verde: '#1E9E50', amarelo: '#FFC400', preto: '#14213F', branco: '#FFFFFF' };
+  const GROSSURA = { fino: .0022, medio: .0040, grosso: .0070 };
+  const est = Object.assign({ ferr: 'caneta', cor: 'vermelho', gr: 'medio', dedo: false }, lerLS('pv.caneta', {}));
+  const guardarEst = () => gravarLS('pv.caneta', est);
+  const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const I = {
+    fechar: ic('<path d="M6 6l12 12M18 6L6 18"/>'),
+    caneta: ic('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
+    marca: ic('<path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>'),
+    borracha: ic('<path d="M20 20H8l-5-5a2 2 0 0 1 0-2.8l9.2-9.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L12 18"/><path d="M6 11l7 7"/>'),
+    laser: ic('<circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
+    desfazer: ic('<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+    refazer: ic('<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>'),
+    limpar: ic('<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>'),
+    dedo: ic('<path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'),
+    ant: ic('<path d="M15 18l-6-6 6-6"/>'),
+    seg: ic('<path d="M9 18l6-6-6-6"/>')
+  };
+
+  let cx = null, aberto = false, n = 1, tracos = [], desf = [], refz = [];
+  let pendente = false, tSalvar = null, visto = null, fotos = {}, urls = [];
+  let atual = null, ativo = null, antesBorracha = null, apagou = false, lpts = [], laserLigado = false;
+  let toque = null, ultimaCaneta = 0;
+
+  function montar(){
+    const d = document.createElement('div');
+    d.className = 'cn oculto'; d.id = 'caneta';
+    d.innerHTML = `
+      <div class="cn-barra">
+        <div class="cn-grupo">
+          <button class="cn-bt" data-acao="fechar" title="Voltar ao sermão">${I.fechar}</button>
+          <span class="cn-relogio" data-r="hora"><small>HORA</small><b>--:--</b></span>
+          <button class="cn-relogio" data-r="cron" title="Toque: iniciar/pausar o cronômetro"><small>TEMPO</small><b>00:00</b></button>
+        </div>
+        <span class="cn-sep"></span>
+        <div class="cn-grupo">
+          <button class="cn-bt" data-ferr="caneta" title="Caneta">${I.caneta}</button>
+          <button class="cn-bt" data-ferr="marca" title="Marca-texto">${I.marca}</button>
+          <button class="cn-bt" data-ferr="borracha" title="Borracha (apaga o traço inteiro)">${I.borracha}</button>
+          <button class="cn-bt" data-ferr="laser" title="Ponteiro laser (não fica salvo)">${I.laser}</button>
+        </div>
+        <span class="cn-sep"></span>
+        <div class="cn-grupo">${Object.entries(CORES).map(([k, v]) => `<button class="cn-cor" data-cor="${k}" title="${k}" style="background:${v}"></button>`).join('')}</div>
+        <span class="cn-sep"></span>
+        <div class="cn-grupo">
+          <button class="cn-bt" data-gr="fino" title="Fino"><i style="width:4px;height:4px"></i></button>
+          <button class="cn-bt" data-gr="medio" title="Médio"><i style="width:7px;height:7px"></i></button>
+          <button class="cn-bt" data-gr="grosso" title="Grosso"><i style="width:11px;height:11px"></i></button>
+        </div>
+        <span class="cn-sep"></span>
+        <div class="cn-grupo">
+          <button class="cn-bt" data-acao="desfazer" title="Desfazer">${I.desfazer}</button>
+          <button class="cn-bt" data-acao="refazer" title="Refazer">${I.refazer}</button>
+          <button class="cn-bt" data-acao="limpar" title="Limpar este slide">${I.limpar}</button>
+          <button class="cn-bt" data-acao="dedo" title="Escrever também com o dedo">${I.dedo}</button>
+        </div>
+        <span class="cn-espaco"></span>
+        <div class="cn-grupo">
+          <button class="cn-bt" data-acao="ant" title="Slide anterior">${I.ant}</button>
+          <span class="cn-num">1 / 1</span>
+          <button class="cn-bt" data-acao="seg" title="Próximo slide">${I.seg}</button>
+        </div>
+      </div>
+      <div class="cn-palco">
+        <div class="cn-folha"><img alt="" draggable="false"><canvas class="cn-base"></canvas><canvas class="cn-vivo"></canvas></div>
+        <button class="cn-fora oculto"></button>
+      </div>`;
+    document.body.appendChild(d);
+    cx = {
+      raiz: d, palco: d.querySelector('.cn-palco'), folha: d.querySelector('.cn-folha'), img: d.querySelector('.cn-folha img'),
+      base: d.querySelector('.cn-base'), vivo: d.querySelector('.cn-vivo'), fora: d.querySelector('.cn-fora'), num: d.querySelector('.cn-num'),
+      hora: d.querySelector('[data-r="hora"] b'), cron: d.querySelector('[data-r="cron"]')
+    };
+    d.querySelector('.cn-barra').addEventListener('click', e => {
+      const f = e.target.closest('[data-ferr]'), c = e.target.closest('[data-cor]'), g = e.target.closest('[data-gr]'), a = e.target.closest('[data-acao]');
+      if (f){ est.ferr = f.dataset.ferr; guardarEst(); pintar(); return; }
+      if (c){ est.cor = c.dataset.cor; if (est.ferr === 'borracha' || est.ferr === 'laser') est.ferr = 'caneta'; guardarEst(); pintar(); return; }
+      if (g){ est.gr = g.dataset.gr; guardarEst(); pintar(); return; }
+      if (e.target.closest('[data-r="cron"]')){ alternarCron(); return; }
+      if (!a) return;
+      const acao = a.dataset.acao;
+      if (acao === 'fechar') fechar();
+      else if (acao === 'desfazer') desfazer();
+      else if (acao === 'refazer') refazer();
+      else if (acao === 'limpar') limpar();
+      else if (acao === 'dedo'){ est.dedo = !est.dedo; guardarEst(); pintar(); aviso(est.dedo ? 'O dedo também escreve (para passar slides, use as setas)' : 'Só a caneta escreve · deslize o dedo para passar os slides', 3500); }
+      else if (acao === 'ant') irSlide(n - 1);
+      else if (acao === 'seg') irSlide(n + 1);
+    });
+    cx.fora.addEventListener('click', () => { projetar(n); visto = projEstado.atual; pintar(); });
+    cx.img.addEventListener('load', medir);
+    const p = cx.palco;
+    p.addEventListener('pointerdown', baixou);
+    p.addEventListener('pointermove', moveu);
+    p.addEventListener('pointerup', soltou);
+    p.addEventListener('pointercancel', soltou);
+    p.addEventListener('contextmenu', e => e.preventDefault());
+    p.addEventListener('touchstart', e => { if (e.touches.length === 1 && !e.target.closest('.cn-fora')) e.preventDefault(); }, { passive: false });
+  }
+
+  /* ---------- tamanho do slide na tela ---------- */
+  function medir(){
+    if (!cx || !aberto) return;
+    const pal = cx.palco.getBoundingClientRect();
+    const ar = cx.img.naturalWidth && cx.img.naturalHeight ? cx.img.naturalWidth / cx.img.naturalHeight : 16 / 9;
+    let w = pal.width - 24, h = w / ar;
+    if (h > pal.height - 24){ h = pal.height - 24; w = h * ar; }
+    w = Math.max(50, Math.floor(w)); h = Math.max(30, Math.floor(h));
+    cx.folha.style.width = w + 'px'; cx.folha.style.height = h + 'px';
+    const dpr = window.devicePixelRatio || 1;
+    [cx.base, cx.vivo].forEach(c => { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); });
+    redesenhar();
+  }
+
+  /* ---------- desenho ---------- */
+  const larg = pr => .45 + .9 * pr;
+  function desenhar(ctx, s){
+    const p = s.p, k = p.length / 3; if (!k) return;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const X = i => p[i * 3] * W, Y = i => p[i * 3 + 1] * H, P = i => p[i * 3 + 2];
+    const base = s.w * W;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
+    if (s.t === 'h'){
+      ctx.globalAlpha = .38; ctx.lineWidth = base;
+      ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+      if (k === 1) ctx.lineTo(X(0) + .1, Y(0));
+      for (let i = 1; i < k; i++){
+        const nx = i < k - 1 ? (X(i) + X(i + 1)) / 2 : X(i), ny = i < k - 1 ? (Y(i) + Y(i + 1)) / 2 : Y(i);
+        ctx.quadraticCurveTo(X(i), Y(i), nx, ny);
+      }
+      ctx.stroke(); ctx.restore(); return;
+    }
+    if (k === 1){ ctx.beginPath(); ctx.arc(X(0), Y(0), base * larg(P(0)) / 2, 0, 7); ctx.fill(); ctx.restore(); return; }
+    let mx = X(0), my = Y(0);
+    for (let i = 1; i < k; i++){
+      const nx = i < k - 1 ? (X(i) + X(i + 1)) / 2 : X(i), ny = i < k - 1 ? (Y(i) + Y(i + 1)) / 2 : Y(i);
+      ctx.lineWidth = base * larg((P(i - 1) + P(i)) / 2);
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.quadraticCurveTo(X(i), Y(i), nx, ny); ctx.stroke();
+      mx = nx; my = ny;
+    }
+    ctx.restore();
+  }
+  function redesenhar(){
+    if (!cx) return;
+    const b = cx.base.getContext('2d'); b.clearRect(0, 0, cx.base.width, cx.base.height);
+    tracos.forEach(s => desenhar(b, s));
+    cx.vivo.getContext('2d').clearRect(0, 0, cx.vivo.width, cx.vivo.height);
+  }
+  function desenharVivo(){
+    const v = cx.vivo.getContext('2d'); v.clearRect(0, 0, cx.vivo.width, cx.vivo.height);
+    if (atual) desenhar(v, atual);
+  }
+
+  /* ---------- ponteiro: caneta escreve, dedo passa slide ---------- */
+  function ponto(e){
+    const r = cx.folha.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, dentro: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
+  }
+  const pressao = e => e.pointerType === 'pen' ? (e.pressure > 0 ? e.pressure : .5) : .5;
+  const escreve = e => e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && est.dedo);
+  function baixou(e){
+    if (e.pointerType === 'pen') ultimaCaneta = performance.now();
+    if (!escreve(e)){
+      if (e.pointerType === 'touch' && e.isPrimary) toque = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, largo: (e.width || 0) > 50 };
+      return;
+    }
+    if (e.button > 0 || ativo !== null) return;
+    const pt = ponto(e); if (!pt.dentro) return;
+    e.preventDefault();
+    try { cx.palco.setPointerCapture(e.pointerId); } catch {}
+    ativo = e.pointerId;
+    if (est.ferr === 'borracha'){ antesBorracha = tracos.slice(); apagou = false; apagarEm(e); return; }
+    if (est.ferr === 'laser'){ lpts = [{ ...pt, t: performance.now() }]; laserLigado = true; requestAnimationFrame(animarLaser); return; }
+    const marca = est.ferr === 'marca';
+    atual = { t: marca ? 'h' : 'p', c: CORES[est.cor] || CORES.vermelho, w: GROSSURA[est.gr] * (marca ? 5 : 1), p: [] };
+    atual.p.push(pt.x, pt.y, pressao(e));
+    desenharVivo();
+  }
+  function moveu(e){
+    if (e.pointerType === 'pen') ultimaCaneta = performance.now();
+    if (e.pointerId !== ativo) return;
+    e.preventDefault();
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    const lista = evs.length ? evs : [e];
+    if (est.ferr === 'borracha'){ lista.forEach(apagarEm); return; }
+    if (est.ferr === 'laser'){ lista.forEach(ev => { const pt = ponto(ev); lpts.push({ ...pt, t: performance.now() }); }); return; }
+    if (!atual) return;
+    lista.forEach(ev => { const pt = ponto(ev); atual.p.push(pt.x, pt.y, pressao(ev)); });
+    desenharVivo();
+  }
+  function soltou(e){
+    if (toque && e.pointerId === toque.id){
+      const dx = e.clientX - toque.x, dy = e.clientY - toque.y, dt = performance.now() - toque.t;
+      const semCaneta = performance.now() - ultimaCaneta > 1200;
+      if (!toque.largo && semCaneta && dt < 700 && Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy)) irSlide(dx < 0 ? n + 1 : n - 1);
+      toque = null; return;
+    }
+    if (e.pointerId !== ativo) return;
+    ativo = null;
+    if (est.ferr === 'borracha'){
+      if (apagou){ desf.push(antesBorracha); if (desf.length > 60) desf.shift(); refz = []; mudou(); }
+      antesBorracha = null; return;
+    }
+    if (est.ferr === 'laser'){ laserLigado = false; return; }
+    if (!atual) return;
+    const s = { t: atual.t, c: atual.c, w: +atual.w.toFixed(5), p: atual.p.map((v, i) => i % 3 === 2 ? Math.round(v * 100) / 100 : Math.round(v * 10000) / 10000) };
+    atual = null;
+    fotografar(); tracos.push(s);
+    desenhar(cx.base.getContext('2d'), s); desenharVivo(); mudou();
+  }
+
+  /* borracha: apaga o traço inteiro que ela tocar */
+  function distSeg(px, py, ax, ay, bx, by){
+    const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
+    let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0; t = Math.max(0, Math.min(1, t));
+    const x = ax + t * dx - px, y = ay + t * dy - py; return Math.sqrt(x * x + y * y);
+  }
+  function apagarEm(e){
+    const r = cx.folha.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, raio = 14;
+    const W = r.width, H = r.height;
+    const fica = tracos.filter(s => {
+      const p = s.p, k = p.length / 3, folga = raio + s.w * W / 2;
+      for (let i = 0; i < k; i++){
+        const ax = p[i * 3] * W, ay = p[i * 3 + 1] * H;
+        const bx = i + 1 < k ? p[(i + 1) * 3] * W : ax, by = i + 1 < k ? p[(i + 1) * 3 + 1] * H : ay;
+        if (distSeg(px, py, ax, ay, bx, by) <= folga) return false;
+      }
+      return true;
+    });
+    if (fica.length !== tracos.length){ tracos = fica; apagou = true; redesenhar(); }
+  }
+
+  /* laser: rastro vermelho que some sozinho */
+  function animarLaser(){
+    if (!cx || !aberto) return;
+    const agora_ = performance.now(), VIDA = 700;
+    lpts = lpts.filter(p => agora_ - p.t < VIDA);
+    const v = cx.vivo.getContext('2d'), W = cx.vivo.width, H = cx.vivo.height, dpr = window.devicePixelRatio || 1;
+    v.clearRect(0, 0, W, H);
+    if (lpts.length){
+      v.save(); v.lineCap = 'round'; v.lineJoin = 'round'; v.strokeStyle = '#FF2D2D'; v.shadowColor = '#FF2D2D'; v.shadowBlur = 10 * dpr;
+      for (let i = 1; i < lpts.length; i++){
+        const a = lpts[i - 1], b = lpts[i];
+        v.globalAlpha = Math.max(0, 1 - (agora_ - b.t) / VIDA); v.lineWidth = 6 * dpr;
+        v.beginPath(); v.moveTo(a.x * W, a.y * H); v.lineTo(b.x * W, b.y * H); v.stroke();
+      }
+      const u = lpts[lpts.length - 1];
+      v.globalAlpha = 1; v.fillStyle = '#FF2D2D'; v.beginPath(); v.arc(u.x * W, u.y * H, 7 * dpr, 0, 7); v.fill();
+      v.restore();
+    }
+    if (lpts.length || laserLigado) requestAnimationFrame(animarLaser);
+  }
+
+  /* ---------- desfazer · refazer · limpar ---------- */
+  function fotografar(){ desf.push(tracos.slice()); if (desf.length > 60) desf.shift(); refz = []; }
+  function desfazer(){ if (!desf.length) return; refz.push(tracos); tracos = desf.pop(); redesenhar(); mudou(); }
+  function refazer(){ if (!refz.length) return; desf.push(tracos); tracos = refz.pop(); redesenhar(); mudou(); }
+  function limpar(){ if (!tracos.length) return; fotografar(); tracos = []; redesenhar(); mudou(); aviso('Slide limpo · o botão desfazer traz de volta'); }
+
+  /* ---------- salvar no sermão ---------- */
+  function mudou(){ pendente = true; clearTimeout(tSalvar); tSalvar = setTimeout(gravar, 1200); pintar(); }
+  function gravar(){
+    clearTimeout(tSalvar);
+    if (!pendente || !pAtual) return;
+    pendente = false;
+    const tinta = { ...(pAtual.tinta || {}) };
+    if (tracos.length) tinta[n] = tracos.slice(); else delete tinta[n];
+    pAtual = { ...pAtual, tinta, atualizado_em: agora(), _pendente: true };
+    dbGravar('sermoes', pAtual).then(() => sincronizar()).catch(console.error);
+  }
+
+  /* ---------- slides ---------- */
+  function carregarSlide(){
+    tracos = (((pAtual && pAtual.tinta) || {})[n] || []).slice(); desf = []; refz = []; atual = null;
+    const src = fotos[n] || (slidesP[n - 1] && slidesP[n - 1].url) || '';
+    if (cx.img.getAttribute('src') !== src) cx.img.src = src; else medir();
+    redesenhar();
+  }
+  function irSlide(m, projetarTambem = true){
+    if (m < 1) return aviso('Primeiro slide');
+    if (m > slidesP.length) return aviso('Último slide');
+    gravar();
+    n = m; carregarSlide();
+    if (projetarTambem){ projetar(n); visto = projEstado.atual; }
+    pintar();
+  }
+  async function abrir(){
+    if (!pAtual || !slidesP.length) return aviso('Este sermão não tem slides.');
+    if (!cx) montar();
+    fotos = {};
+    try { (await dbSlidesDe(pAtual.id)).forEach(r => { if (r.full){ const u = URL.createObjectURL(r.full); urls.push(u); fotos[r.n] = u; } }); } catch {}
+    n = Math.min(Math.max(projEstado.atual || 1, 1), slidesP.length);
+    visto = projEstado.atual;
+    aberto = true; cx.raiz.classList.remove('oculto');
+    if (!fixoAtivo()) abrirSlides(false);
+    carregarSlide(); pintar();
+    requestAnimationFrame(medir);
+  }
+  function fechar(){
+    gravar(); aberto = false; laserLigado = false; lpts = []; ativo = null; atual = null;
+    if (cx) cx.raiz.classList.add('oculto');
+    cx.img.removeAttribute('src');
+    soltarUrls(urls); fotos = {};
+  }
+
+  /* ---------- aparência dos botões ---------- */
+  function pintar(){
+    if (!cx) return;
+    cx.raiz.querySelectorAll('[data-ferr]').forEach(b => b.classList.toggle('on', b.dataset.ferr === est.ferr));
+    cx.raiz.querySelectorAll('[data-cor]').forEach(b => b.classList.toggle('on', b.dataset.cor === est.cor));
+    cx.raiz.querySelectorAll('[data-gr]').forEach(b => b.classList.toggle('on', b.dataset.gr === est.gr));
+    cx.raiz.querySelector('[data-acao="dedo"]').classList.toggle('on', est.dedo);
+    cx.raiz.querySelector('[data-acao="desfazer"]').disabled = !desf.length;
+    cx.raiz.querySelector('[data-acao="refazer"]').disabled = !refz.length;
+    cx.raiz.querySelector('[data-acao="limpar"]').disabled = !tracos.length;
+    cx.raiz.querySelector('[data-acao="ant"]').disabled = n <= 1;
+    cx.raiz.querySelector('[data-acao="seg"]').disabled = n >= slidesP.length;
+    cx.num.textContent = `${n} / ${slidesP.length}`;
+    const noAr = projEstado.atual === n && !projEstado.preta;
+    cx.fora.classList.toggle('oculto', noAr);
+    cx.fora.textContent = projEstado.preta ? 'Telão em tela preta · toque para mostrar este slide' : 'Este slide não está no telão · toque para projetar';
+    cx.palco.classList.toggle('so-caneta', !est.dedo);
+  }
+
+  /* ---------- hora, cronômetro e o slide seguindo o telão ---------- */
+  setInterval(() => {
+    if (!aberto || !cx) return;
+    cx.hora.textContent = $('#hora').textContent;
+    cx.cron.querySelector('b').textContent = $('#cron-valor').textContent;
+    const cor = ['azul', 'amarelo', 'laranja', 'vermelho'].find(c => $('#cron').classList.contains(c)) || 'azul';
+    cx.cron.className = 'cn-relogio ' + cor + ($('#cron').classList.contains('parado') ? ' parado' : '');
+    if (projEstado.atual !== visto){
+      visto = projEstado.atual;
+      if (visto && visto !== n && ativo === null) irSlide(visto, false);
+    }
+    pintar();
+  }, 300);
+
+  /* ---------- controle de apresentação e teclado (só com a tela cheia aberta) ---------- */
+  window.addEventListener('keydown', e => {
+    if (!aberto) return;
+    if (e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]')) return;
+    const k = e.key;
+    if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'z'){ e.preventDefault(); e.stopImmediatePropagation(); e.shiftKey ? refazer() : desfazer(); return; }
+    if (['PageDown', 'ArrowRight', 'ArrowDown'].includes(k)){ e.preventDefault(); e.stopImmediatePropagation(); irSlide(n + 1); }
+    else if (['PageUp', 'ArrowLeft', 'ArrowUp'].includes(k)){ e.preventDefault(); e.stopImmediatePropagation(); irSlide(n - 1); }
+    // as demais teclas (como o botão do cronômetro) seguem para o púlpito normalmente
+  }, true);
+
+  addEventListener('resize', () => { if (aberto) requestAnimationFrame(medir); });
+  addEventListener('orientationchange', () => setTimeout(() => { if (aberto) medir(); }, 350));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gravar(); });
+
+  botao.addEventListener('click', e => { e.stopPropagation(); abrir(); });
+})();
 </script>
 <script src="teleprompter.js"></script>
 </body>
