@@ -826,7 +826,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.10.0';
+const VERSAO = '2.11.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2735,11 +2735,14 @@ function conectarProjetor(){
          projEstado.t = e.t; pintarSlides();
        })
        .on('broadcast', { event: 'pedido' }, () => { if ($('#pulpito').classList.contains('ativa') && slidesP.length) enviarEstado(); })
+       .on('broadcast', { event: 'pedido-tinta' }, ({ payload: p }) => { if (window.pvTinta) window.pvTinta.responder(p); })
        .subscribe(st => { canalOk = st === 'SUBSCRIBED'; pintarSlides(); if (canalOk && slidesP.length) enviarEstado(); });
 }
 function enviarEstado(){
   if (!canal || !canalOk) return;
-  canal.send({ type: 'broadcast', event: 'estado', payload: projEstado }).catch(() => {});
+  // v2.11: junto vai a "versão" das marcações do slide no ar; o projetor pede os traços quando ela muda
+  const tv = window.pvTinta && projEstado.atual ? window.pvTinta.v(projEstado.atual) : undefined;
+  canal.send({ type: 'broadcast', event: 'estado', payload: tv === undefined ? projEstado : { ...projEstado, tv } }).catch(() => {});
 }
 function iniciarBatida(){ pararBatida(); batida = setInterval(() => { if ($('#pulpito').classList.contains('ativa') && slidesP.length){ enviarEstado(); pintarSlides(); } }, 4000); }
 function pararBatida(){ if (batida) clearInterval(batida); batida = null; }
@@ -3608,7 +3611,7 @@ iniciar();
     try { cx.palco.setPointerCapture(e.pointerId); } catch {}
     ativo = e.pointerId;
     if (est.ferr === 'borracha'){ antesBorracha = tracos.slice(); apagou = false; apagarEm(e); return; }
-    if (est.ferr === 'laser'){ lpts = [{ ...pt, t: performance.now() }]; laserLigado = true; requestAnimationFrame(animarLaser); return; }
+    if (est.ferr === 'laser'){ lpts = [{ ...pt, t: performance.now() }]; laserPonto(pt); laserLigado = true; requestAnimationFrame(animarLaser); return; }
     const marca = est.ferr === 'marca';
     atual = { t: marca ? 'h' : 'p', c: CORES[est.cor] || CORES.vermelho, w: GROSSURA[est.gr] * (marca ? 5 : 1), p: [] };
     atual.p.push(pt.x, pt.y, pressao(e));
@@ -3621,7 +3624,7 @@ iniciar();
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
     const lista = evs.length ? evs : [e];
     if (est.ferr === 'borracha'){ lista.forEach(apagarEm); return; }
-    if (est.ferr === 'laser'){ lista.forEach(ev => { const pt = ponto(ev); lpts.push({ ...pt, t: performance.now() }); }); return; }
+    if (est.ferr === 'laser'){ lista.forEach(ev => { const pt = ponto(ev); lpts.push({ ...pt, t: performance.now() }); laserPonto(pt); }); return; }
     if (!atual) return;
     lista.forEach(ev => { const pt = ponto(ev); atual.p.push(pt.x, pt.y, pressao(ev)); });
     desenharVivo();
@@ -3696,7 +3699,7 @@ iniciar();
   function limpar(){ if (!tracos.length) return; fotografar(); tracos = []; redesenhar(); mudou(); aviso('Slide limpo · o botão desfazer traz de volta'); }
 
   /* ---------- salvar no sermão ---------- */
-  function mudou(){ pendente = true; clearTimeout(tSalvar); tSalvar = setTimeout(gravar, 1200); pintar(); }
+  function mudou(){ pendente = true; clearTimeout(tSalvar); tSalvar = setTimeout(gravar, 1200); tintaV[n] = Date.now(); enviarTinta(n); pintar(); }
   function gravar(){
     clearTimeout(tSalvar);
     if (!pendente || !pAtual) return;
@@ -3719,7 +3722,7 @@ iniciar();
     if (m > slidesP.length) return aviso('Último slide');
     gravar();
     n = m; carregarSlide();
-    if (projetarTambem){ projetar(n); visto = projEstado.atual; }
+    if (projetarTambem){ projetar(n); visto = projEstado.atual; enviarTinta(n); }
     pintar();
   }
   async function abrir(){
@@ -3788,6 +3791,42 @@ iniciar();
   addEventListener('resize', () => { if (aberto) requestAnimationFrame(medir); });
   addEventListener('orientationchange', () => setTimeout(() => { if (aberto) medir(); }, 350));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gravar(); });
+
+  /* ---------- v2.11: as marcações vão para o telão ---------- */
+  // cada slide tem uma "versão" das marcações; muda a cada traço. Começa com a hora em que o app abriu,
+  // para o projetor pedir de novo depois que o iPad recarregar.
+  const tintaV = {}, BASE_V = Date.now();
+  const tracosDe = m => (aberto && m === n) ? tracos : ((((pAtual && pAtual.tinta) || {})[m]) || []);
+  // números inteiros pesam menos na internet; se o slide tiver muita tinta, manda menos pontos
+  function compactar(lista){
+    let passo = 1, out, txt;
+    do {
+      out = lista.map(s => {
+        const p = s.p, q = [], k = p.length / 3;
+        for (let i = 0; i < k; i++){ if (i % passo && i !== k - 1) continue; q.push(Math.round(p[i * 3] * 10000), Math.round(p[i * 3 + 1] * 10000), Math.round(p[i * 3 + 2] * 100)); }
+        return { t: s.t, c: s.c, w: s.w, q };
+      });
+      txt = JSON.stringify(out); passo *= 2;
+    } while (txt.length > 180000 && passo <= 16);
+    return out;
+  }
+  function enviarTinta(m){
+    if (!pAtual || !canal || !canalOk || !m) return;
+    canal.send({ type: 'broadcast', event: 'tinta', payload: { sermao_id: pAtual.id, n: m, tv: tintaV[m] || BASE_V, tracos: compactar(tracosDe(m)) } }).catch(() => {});
+  }
+  // laser: junta os pontos e manda em pacotes pequenos, umas 12 vezes por segundo
+  let laserBuf = [];
+  function laserPonto(pt){ laserBuf.push(Math.round(pt.x * 10000), Math.round(pt.y * 10000)); }
+  setInterval(() => {
+    if (!laserBuf.length) return;
+    const q = laserBuf; laserBuf = [];
+    if (!pAtual || !canal || !canalOk || projEstado.atual !== n || projEstado.preta) return;
+    canal.send({ type: 'broadcast', event: 'laser', payload: { sermao_id: pAtual.id, n, q } }).catch(() => {});
+  }, 80);
+  window.pvTinta = {
+    v: m => tintaV[m] || BASE_V,
+    responder: p => { if (p && pAtual && p.sermao_id === pAtual.id && p.n) enviarTinta(+p.n); }
+  };
 
   botao.addEventListener('click', e => { e.stopPropagation(); abrir(); });
 })();

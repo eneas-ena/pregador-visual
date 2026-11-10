@@ -68,12 +68,19 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 #painel-aviso .dica{color:#B9C0D3;font-size:13px;line-height:1.45;margin-top:10px}
 #painel-aviso .dica b{color:#C9A227;word-break:break-all}
 #aviso-on{display:none;color:#3DDC84;font-weight:700;font-size:13px}
+/* v2.11: marcações da caneta por cima do slide */
+#tinta{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#espera{z-index:3}
+#cantos{z-index:25}
+#atualizar.novo{background:#C9A227;color:#0F1B33;border-color:#C9A227}
+#atualizar-espera{margin-top:4px}
 body.com-aviso #aviso-on{display:inline}
 </style>
 </head>
 <body>
 <img class="camada" id="camA" alt="">
 <img class="camada" id="camB" alt="">
+<canvas id="tinta"></canvas>
 
 <div id="espera">
   <img src="icon-512.png" alt="">
@@ -92,6 +99,7 @@ body.com-aviso #aviso-on{display:inline}
     <button class="botao prim" id="cheia" type="button">Tela cheia</button>
   </div>
   <span class="versao" data-versao></span>
+  <button class="botao oculto" id="atualizar-espera" type="button"></button>
 </div>
 
 <div id="letreiro" class="oculto"><span id="lt-texto"></span></div>
@@ -112,12 +120,13 @@ body.com-aviso #aviso-on{display:inline}
   <span class="estado" id="estado2"><i></i><span>—</span></span>
   <button id="btn-aviso" title="Aviso no telão (tecla A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/></svg></button>
   <span class="versao" data-versao></span>
+  <button id="atualizar" title="Atualizar o projetor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
   <button id="tema" title="Fundo claro/escuro"></button>
   <button id="cheia2" title="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
 </div>
 
 <script>
-const VERSAO = '2.9.4';
+const VERSAO = '2.11.0';
 const { SB_URL, SB_KEY } = window.PV_CONFIG;
 const $ = s => document.querySelector(s);
 document.querySelectorAll('[data-versao]').forEach(e => e.textContent = 'v' + VERSAO);
@@ -138,7 +147,8 @@ const EN = {
   'Aviso no telão': 'Notice on screen', '● no ar': '● on air', 'Fechar': 'Close', 'Velocidade': 'Speed', 'Lento': 'Slow', 'Normal': 'Normal', 'Rápido': 'Fast',
   'Repetir': 'Repeat', '1 vez': 'Once', '3 vezes': '3 times', 'Sem parar': 'Nonstop', 'Posição': 'Position', 'No alto': 'Top', 'No rodapé': 'Bottom', 'Letra': 'Size',
   '▶ Mostrar aviso': '▶ Show notice', '■ Tirar aviso': '■ Remove notice', 'Aviso no telão (tecla A)': 'Notice on screen (key A)',
-  'Se esta tela estiver espelhada no telão, todos veem você digitar. Para digitar escondido, use o celular:': 'If this screen is mirrored on the projector, everyone sees you typing. To type privately, use your phone:'
+  'Se esta tela estiver espelhada no telão, todos veem você digitar. Para digitar escondido, use o celular:': 'If this screen is mirrored on the projector, everyone sees you typing. To type privately, use your phone:',
+  'Atualizar o projetor': 'Update the projector', 'Versão nova': 'New version', 'Atualizar agora': 'Update now'
 };
 const T = s => IDIOMA === 'en' && EN[s] ? EN[s] : s;
 if (IDIOMA === 'en'){
@@ -297,6 +307,20 @@ function conectar(codigo){
     ultimoToque = e.t || 0;
     const url = (!e.preta && e.atual && e.slides) ? e.slides[e.atual - 1] : null;
     mostrar(url);
+    atualizarTinta(e, url);
+  });
+  // v2.11: traços da caneta e laser vindos do iPad
+  canal.on('broadcast', { event: 'tinta' }, ({ payload: p }) => {
+    if (!p || !p.sermao_id || !p.n) return;
+    const k = chaveT(p.sermao_id, p.n);
+    tCache[k] = p.tracos || []; tVer[k] = p.tv;
+    if (k === tKey) pintarTinta();
+  });
+  canal.on('broadcast', { event: 'laser' }, ({ payload: p }) => {
+    if (!p || chaveT(p.sermao_id, p.n) !== tKey || !Array.isArray(p.q)) return;
+    const agora = performance.now();
+    for (let i = 0; i + 1 < p.q.length; i += 2) tLaser.push({ x: p.q[i] / 10000, y: p.q[i + 1] / 10000, t: agora });
+    animarLaser();
   });
   // avisos vindos do celular (aviso.html): mostra e responde que recebeu
   canal.on('broadcast', { event: 'aviso' }, ({ payload: a }) => {
@@ -319,6 +343,103 @@ function conectar(codigo){
     }
   }, 5000);
 }
+
+/* ===== v2.11: MARCAÇÕES DA CANETA DO iPad POR CIMA DO SLIDE ===== */
+// O iPad avisa a "versão" das marcações do slide no ar; quando ela muda, este projetor pede os traços.
+const cvT = $('#tinta');
+let tKey = null, tCache = {}, tVer = {}, tPedido = {}, tLaser = [], tAnimando = false;
+const chaveT = (s, n) => s + '|' + n;
+function atualizarTinta(e, url){
+  const k = url && e.sermao_id && e.atual ? chaveT(e.sermao_id, e.atual) : null;
+  if (k !== tKey){ tKey = k; tLaser = []; pintarTinta(); }
+  if (!k || e.tv === undefined || tVer[k] === e.tv) return;
+  const pk = k + '|' + e.tv;
+  if (tPedido[pk] && Date.now() - tPedido[pk] < 4000) return;
+  tPedido[pk] = Date.now();
+  canal.send({ type: 'broadcast', event: 'pedido-tinta', payload: { sermao_id: e.sermao_id, n: e.atual } }).catch(() => {});
+}
+// onde o slide está na tela (ele fica centralizado, com faixas nas bordas)
+function retSlide(dpr){
+  const img = $('#' + visivel), W = innerWidth, H = innerHeight;
+  const nw = img.naturalWidth || 16, nh = img.naturalHeight || 9, e = Math.min(W / nw, H / nh);
+  const w = nw * e, h = nh * e;
+  return { x: (W - w) / 2 * dpr, y: (H - h) / 2 * dpr, w: w * dpr, h: h * dpr };
+}
+function tracoT(ctx, s, r){
+  const q = s.q || [], k = q.length / 3; if (!k) return;
+  const X = i => r.x + q[i * 3] / 10000 * r.w, Y = i => r.y + q[i * 3 + 1] / 10000 * r.h, P = i => q[i * 3 + 2] / 100;
+  const larg = pr => .45 + .9 * pr, base = s.w * r.w;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
+  const meio = i => [i < k - 1 ? (X(i) + X(i + 1)) / 2 : X(i), i < k - 1 ? (Y(i) + Y(i + 1)) / 2 : Y(i)];
+  if (s.t === 'h'){
+    ctx.globalAlpha = .38; ctx.lineWidth = base; ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+    if (k === 1) ctx.lineTo(X(0) + .1, Y(0));
+    for (let i = 1; i < k; i++){ const [nx, ny] = meio(i); ctx.quadraticCurveTo(X(i), Y(i), nx, ny); }
+    ctx.stroke();
+  } else if (k === 1){ ctx.beginPath(); ctx.arc(X(0), Y(0), base * larg(P(0)) / 2, 0, 7); ctx.fill(); }
+  else {
+    let mx = X(0), my = Y(0);
+    for (let i = 1; i < k; i++){
+      const [nx, ny] = meio(i); ctx.lineWidth = base * larg((P(i - 1) + P(i)) / 2);
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.quadraticCurveTo(X(i), Y(i), nx, ny); ctx.stroke(); mx = nx; my = ny;
+    }
+  }
+  ctx.restore();
+}
+function pintarTinta(){
+  const dpr = window.devicePixelRatio || 1, W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+  if (cvT.width !== W || cvT.height !== H){ cvT.width = W; cvT.height = H; }
+  const ctx = cvT.getContext('2d'); ctx.clearRect(0, 0, W, H);
+  const img = $('#' + visivel);
+  if (!tKey || !urlAtual || img.src !== urlAtual || !img.complete) return;     // espera o slide novo aparecer
+  const r = retSlide(dpr);
+  (tCache[tKey] || []).forEach(s => tracoT(ctx, s, r));
+  // laser: rastro vermelho que some sozinho
+  const agora = performance.now(), VIDA = 700;
+  tLaser = tLaser.filter(p => agora - p.t < VIDA);
+  if (tLaser.length){
+    ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = '#FF2D2D'; ctx.shadowColor = '#FF2D2D'; ctx.shadowBlur = 14 * dpr; ctx.lineWidth = 9 * dpr;
+    for (let i = 1; i < tLaser.length; i++){
+      const a = tLaser[i - 1], b = tLaser[i];
+      ctx.globalAlpha = Math.max(0, 1 - (agora - b.t) / VIDA);
+      ctx.beginPath(); ctx.moveTo(r.x + a.x * r.w, r.y + a.y * r.h); ctx.lineTo(r.x + b.x * r.w, r.y + b.y * r.h); ctx.stroke();
+    }
+    const u = tLaser[tLaser.length - 1]; ctx.globalAlpha = 1; ctx.fillStyle = '#FF2D2D';
+    ctx.beginPath(); ctx.arc(r.x + u.x * r.w, r.y + u.y * r.h, 10 * dpr, 0, 7); ctx.fill(); ctx.restore();
+  }
+}
+function animarLaser(){
+  if (tAnimando) return; tAnimando = true;
+  const passo = () => { pintarTinta(); if (tLaser.length) requestAnimationFrame(passo); else tAnimando = false; };
+  requestAnimationFrame(passo);
+}
+['#camA', '#camB'].forEach(s => $(s).addEventListener('load', () => setTimeout(pintarTinta, 0)));
+addEventListener('resize', pintarTinta);
+
+/* ===== ATUALIZAÇÃO DO PROJETOR ===== */
+async function versaoPublicada(){
+  try { const r = await fetch('projetor.html?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; const m = (await r.text()).match(/const VERSAO = '([^']+)'/); return m ? m[1] : null; }
+  catch { return null; }
+}
+async function atualizarProjetor(){
+  try {
+    if ('serviceWorker' in navigator){ const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); }
+    if (window.caches){ const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('pvisual-')).map(k => caches.delete(k))); }
+  } catch {}
+  const u = new URL(location.href); u.searchParams.set('atualizado', Date.now()); location.replace(u.href);   // mantém o código no endereço
+}
+async function verificarVersao(){
+  if (!navigator.onLine) return;
+  const v = await versaoPublicada();
+  if (!v || v === VERSAO) return;
+  // aviso discreto: só no canto (aparece ao mexer o mouse) e na tela de espera, nunca por cima do slide
+  $('#atualizar').classList.add('novo'); $('#atualizar').title = T('Versão nova') + ' v' + v;
+  const b = $('#atualizar-espera'); b.textContent = T('Versão nova') + ' v' + v + ' · ' + T('Atualizar agora'); b.classList.remove('oculto');
+}
+$('#atualizar').onclick = atualizarProjetor;
+$('#atualizar-espera').onclick = atualizarProjetor;
+setTimeout(verificarVersao, 6000);
+setInterval(verificarVersao, 30 * 60 * 1000);
 
 const inicial = codigoSalvo();
 if (inicial){ try { localStorage.setItem('pv.projetor.codigo', inicial); } catch {} conectar(inicial); }
