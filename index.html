@@ -831,7 +831,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.13.1';
+const VERSAO = '2.14.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -2410,6 +2410,7 @@ function desenharAdmin(){
       ${eu ? '' : `<div class="adm-acoes">
         ${p.situacao !== 'aprovado' ? `<button class="btn verde" data-acao="aprovado">✓ ${p.situacao === 'bloqueado' ? 'Desbloquear' : 'Aprovar'}</button>` : ''}
         ${p.situacao !== 'bloqueado' ? `<button class="btn perigo" data-acao="bloqueado">Bloquear</button>` : ''}
+        ${p.admin ? '' : `<button class="btn perigo" data-acao="excluir" title="Apagar de vez este pastor, os sermões e os slides">🗑 Apagar</button>`}
       </div>`}
     </div>`;
   }).join('');
@@ -2426,11 +2427,60 @@ async function alterarPerfil(id, campos){
 $('#adm-lista').addEventListener('click', async e => {
   const b = e.target.closest('[data-acao]'); if (!b) return;
   const id = b.closest('[data-id]').dataset.id, p = admPerfis.find(x => x.id === id), nova = b.dataset.acao;
+  if (nova === 'excluir') return excluirPastor(p, b);
   if (nova === 'bloqueado' && !confirm(`Bloquear ${p.nome || p.email}?\n\nEle não conseguirá mais abrir nem sincronizar os sermões. Os dados dele não são apagados e você pode desbloquear depois.`)) return;
   b.disabled = true;
   if (await alterarPerfil(id, { situacao: nova })){ aviso(nova === 'aprovado' ? 'Pastor aprovado' : 'Pastor bloqueado'); desenharAdmin(); contarPendentes(); }
   else b.disabled = false;
 });
+/* v2.14: apagar um pastor de vez (slides, sermões, dados e login) */
+async function listarArquivos(prefixo){
+  const out = [], pastas = [prefixo];
+  while (pastas.length){
+    const pasta = pastas.shift();
+    for (let ini = 0; ; ini += 1000){
+      const { data, error } = await sb().storage.from(BUCKET).list(pasta, { limit: 1000, offset: ini });
+      if (error) throw error;
+      (data || []).forEach(o => { if (o.id) out.push(`${pasta}/${o.name}`); else pastas.push(`${pasta}/${o.name}`); });
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return out;
+}
+async function excluirPastor(p, b){
+  const nome = p.nome || p.email;
+  const u = p.uso;
+  const resumo = u ? `${u.sermoes} sermão(ões) e ${mb(u.usado_bytes)} MB de slides` : 'todos os sermões e slides';
+  if (!confirm(`Apagar DE VEZ ${nome} (${p.email})?\n\nSerão apagados ${resumo}, os dados da conta e o login.\nIsto NÃO pode ser desfeito.\n\nSe quiser apenas impedir o acesso, use "Bloquear".`)) return;
+  const dig = prompt(`Para confirmar, digite APAGAR`);
+  if (dig === null) return;
+  if (dig.trim().toUpperCase() !== 'APAGAR') return aviso('Nada foi apagado (a palavra não confere).');
+  b.disabled = true; b.textContent = 'Apagando…';
+  try {
+    // 1) slides guardados na nuvem (pasta com o id do pastor)
+    const arquivos = await listarArquivos(p.id);
+    if (!arquivos.length && u && u.usado_bytes > 0) throw new Error('SEM_PERMISSAO_SLIDES');
+    for (let i = 0; i < arquivos.length; i += 100){
+      const lote = arquivos.slice(i, i + 100);
+      const { data, error } = await sb().storage.from(BUCKET).remove(lote);
+      if (error) throw error;
+      if ((data || []).length < lote.length) throw new Error('SEM_PERMISSAO_SLIDES');
+    }
+    // 2) sermões, dados da conta e login (função no Supabase, só o administrador pode usar)
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/admin_excluir_pastor`, { method: 'POST', headers: await cab(), body: JSON.stringify({ alvo: p.id }) });
+    if (!r.ok){ const t = await r.text(); throw new Error(/PGRST202|Could not find the function/i.test(t) ? 'FALTA_SQL' : t); }
+    admPerfis = admPerfis.filter(x => x.id !== p.id);
+    aviso(`${nome} foi apagado`); desenharAdmin(); contarPendentes();
+    carregarAdmin();
+  } catch (e){
+    console.error(e);
+    const m = String(e && e.message || e);
+    aviso(m === 'FALTA_SQL' || m === 'SEM_PERMISSAO_SLIDES'
+      ? 'Falta rodar no Supabase o SQL do botão Apagar (schema-v2.14.sql).'
+      : 'Não consegui apagar: ' + m.slice(0, 140), 9000);
+    b.disabled = false; b.textContent = '🗑 Apagar';
+  }
+}
 $('#adm-lista').addEventListener('change', async e => {
   const sel = e.target.closest('[data-campo]'); if (!sel) return;
   const id = sel.closest('[data-id]').dataset.id, campo = sel.dataset.campo;
