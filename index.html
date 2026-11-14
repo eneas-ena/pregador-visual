@@ -831,7 +831,7 @@ li > .nota-linha{margin:.3em 0}
 /* ============================================================
    PREGADOR VISUAL — púlpito digital para vários pastores
    ============================================================ */
-const VERSAO = '2.14.0';
+const VERSAO = '2.15.0';
 
 // Banco de dados: tudo vem do config.js (já preenchido)
 const { SB_URL, SB_KEY, SCHEMA, BUCKET } = window.PV_CONFIG;
@@ -1655,6 +1655,43 @@ function mostrarAguardando(){
 async function entrarNoApp(){
   irPara('inicio'); mostrarCodigo(); mostrarBotaoAdmin();
   await desenharLista(); sincronizar(); contarPendentes();
+  receberDoCanivete();
+}
+
+/* ===================== v2.15 · RECEBER DO CANIVETE (Ateliê do Sermão) =====================
+   O Ateliê do Sermão (eneas-ena.github.io/canivete) deixa um "pacote" neste aparelho
+   (IndexedDB "canivete-entregas"): o DOCX diagramado e o PDF dos slides.
+   Ao abrir o Pregador, o pacote vira um sermão novo no editor, já com título, data,
+   texto base, Word e slides. O Bispo confere e toca em Salvar (e o resto segue normal). */
+function caixaCanivete(modo, valor){
+  return new Promise((ok, erro) => {
+    const r = indexedDB.open('canivete-entregas', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('pacotes', { keyPath: 'id' });
+    r.onerror = () => erro(r.error);
+    r.onsuccess = () => {
+      const d = r.result, t = d.transaction('pacotes', modo === 'pegar' ? 'readonly' : 'readwrite'), st = t.objectStore('pacotes');
+      const q = modo === 'pegar' ? st.get('ultimo') : st.delete('ultimo');
+      q.onsuccess = () => ok(q.result || null); q.onerror = () => erro(q.error);
+    };
+  });
+}
+async function receberDoCanivete(){
+  let pac = null;
+  try { pac = await caixaCanivete('pegar'); } catch { return; }
+  const pediu = new URLSearchParams(location.search).has('receber');
+  if (pediu) history.replaceState(null, '', location.pathname);
+  if (!pac || (!pediu && Date.now() - (pac.criado || 0) > 3 * 864e5)) return;
+  try {
+    await abrirEditor(null);
+    $('#ed-titulo').value = pac.titulo || '';
+    if (pac.data) $('#ed-data').value = pac.data;
+    if (pac.culto) $('#ed-culto').value = pac.culto;
+    const ref = $('#ed-textos .t-ref'); if (ref && pac.ref) ref.value = pac.ref;
+    await lerWord(new File([pac.docx], pac.nomeDocx || 'sermao.docx'));
+    if (pac.pdf) await lerPdfSlides(new File([pac.pdf], pac.nomePdf || 'slides.pdf', { type: 'application/pdf' }));
+    await caixaCanivete('apagar');
+    aviso('Sermão recebido do Ateliê do Sermão. Confira e toque em Salvar.', 6000);
+  } catch (e) { console.error(e); aviso('Não consegui abrir o sermão enviado pelo Canivete.'); }
 }
 
 // confere na nuvem se a conta continua valendo (e se foi aprovada/bloqueada)
